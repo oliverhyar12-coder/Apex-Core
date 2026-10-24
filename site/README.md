@@ -7,13 +7,15 @@ site/
 ├── index.html           home: hero, services, Apex Core install, IT topics, contact
 ├── apex-core/index.html Apex Core product page
 ├── about/index.html     Oliver's CV dashboard
+├── projects/index.html  projects dashboard: status board and the coming-soon Android apps
 ├── 404.html
 ├── CNAME                orivexs.team
 └── assets/              site.css, site.js, favicon.svg
 ```
 
 Every page works without JavaScript. `site.js` only adds the OS install tabs (picking
-the visitor's OS), copy buttons, scroll reveals and the terminal playback. Animations
+the visitor's OS), copy buttons, the project board filter, scroll reveals and the terminal
+playback. Animations
 are switched off for visitors who ask for reduced motion.
 
 ## Preview locally (CachyOS / any Linux)
@@ -30,6 +32,8 @@ python -m http.server 8000 -d site
    That installs from the default branch, so it fails until the code is on `main`.
 2. **Fill in the placeholders** on `about/index.html`: the two `[YEAR]` timeline rows
    and `[ADD YOUR STACK]`. Check the repair service lines match what you actually offer.
+   When a project changes status, update its card on `projects/index.html` (board column,
+   stat counts and spotlight) — the page is plain HTML.
 3. **Set up email for oliver@orivexs.team** (see below). Owning the domain does not
    give you a mailbox.
 

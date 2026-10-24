@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projects — Apex Core, Apex Finance and Apex AI Study Helper · Orivexs Team</title>
+<meta name="description" content="Everything Orivexs Team has shipped or is building: Apex Core, the orivexs.team website, and two Android apps coming soon, Apex Finance and Apex AI Study Helper.">
+<link rel="canonical" href="https://orivexs.team/projects/">
+<meta name="theme-color" content="#0b0d10">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Orivexs Team">
+<meta property="og:title" content="Orivexs Team projects">
+<meta property="og:description" content="Apex Core is out now. Apex Finance and Apex AI Study Helper are coming soon to Android.">
+<meta property="og:url" content="https://orivexs.team/projects/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.className = "js";</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav class="wrap" aria-label="Main">
+    <a class="brand" href="../" aria-label="Orivexs Team home">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="17" r="11" stroke="#ff8a3d" stroke-width="2.5"/><path d="M16 2l5 8h-10z" fill="#ff8a3d"/></svg>
+      <span class="brand-name">ORIVEXS</span>
+      <span class="brand-team">TEAM</span>
+    </a>
+    <div class="nav-links">
+      <a href="./" aria-current="page">Projects</a>
+      <a href="../apex-core/">Apex Core</a>
+      <a href="../about/">About</a>
+      <a href="../">Home</a>
+      <a class="btn btn--sm" href="mailto:oliver@orivexs.team">Contact</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+
+  <section class="hero texture" aria-labelledby="pj-title" style="border-bottom: 1px solid var(--line-soft)">
+    <div class="letterbox letterbox--top" aria-hidden="true"></div>
+    <div class="letterbox letterbox--bottom" aria-hidden="true"></div>
+    <div class="wrap">
+      <p class="overline intro d1">Orivexs Team · Projects dashboard</p>
+      <h1 id="pj-title" class="hero-title hero-title--product intro d2">Projects</h1>
+      <p class="lede intro d3">Everything Orivexs Team has shipped or is building, in one place. Two new Apex apps are on their way to Android.</p>
+      <dl class="stats intro d4">
+        <div class="stat"><dt>projects</dt><dd>4</dd></div>
+        <div class="stat"><dt>live</dt><dd class="c-ok">1</dd></div>
+        <div class="stat"><dt>release candidate</dt><dd class="c-warn">1</dd></div>
+        <div class="stat"><dt>coming soon to Android</dt><dd class="accent">2</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section aria-labelledby="board-title">
+    <div class="wrap" style="padding-block: clamp(80px, 10vw, 100px); display: flex; flex-direction: column; gap: 32px">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">01 / Status board</p>
+          <h2 id="board-title" class="h-xl">From bench to release.</h2>
+        </div>
+        <div class="tablist filters" role="group" aria-label="Filter by platform" data-board-filter="board">
+          <button class="tab" type="button" data-filter="all" aria-pressed="true">All</button>
+          <button class="tab" type="button" data-filter="android" aria-pressed="false">Android</button>
+          <button class="tab" type="button" data-filter="terminal" aria-pressed="false">Terminal</button>
+          <button class="tab" type="button" data-filter="web" aria-pressed="false">Web</button>
+        </div>
+      </div>
+      <div class="board reveal" id="board">
+        <div class="board-col">
+          <div class="board-head"><h3><span class="dot dot--soon" aria-hidden="true"></span>Coming soon</h3><span data-col-count>2</span></div>
+          <a class="board-card" href="#finance" data-platform="android">
+            <span class="title">Apex Finance<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b929b" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+            <span class="line">Manage your income and expenses.</span>
+            <span class="tag-list"><span>Android</span></span>
+          </a>
+          <a class="board-card" href="#study" data-platform="android">
+            <span class="title">Apex AI Study Helper<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b929b" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+            <span class="line">An AI study helper for students.</span>
+            <span class="tag-list"><span>Android</span><span>AI</span></span>
+          </a>
+          <p class="board-empty" hidden>Nothing here for this filter.</p>
+        </div>
+        <div class="board-col">
+          <div class="board-head"><h3><span class="dot dot--rc" aria-hidden="true"></span>Release candidate</h3><span data-col-count>1</span></div>
+          <a class="board-card" href="../apex-core/" data-platform="terminal">
+            <span class="title">Apex Core<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b929b" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+            <span class="line">Open-source AI agent for your terminal. v0.1.0rc1.</span>
+            <span class="tag-list"><span>Terminal</span><span>Python</span><span>MIT</span></span>
+          </a>
+          <p class="board-empty" hidden>Nothing here for this filter.</p>
+        </div>
+        <div class="board-col">
+          <div class="board-head"><h3><span class="dot dot--live" aria-hidden="true"></span>Live</h3><span data-col-count>1</span></div>
+          <a class="board-card" href="../" data-platform="web">
+            <span class="title">orivexs.team<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b929b" stroke-width="2" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></span>
+            <span class="line">This website. No framework, no build step.</span>
+            <span class="tag-list"><span>Web</span></span>
+          </a>
+          <p class="board-empty" hidden>Nothing here for this filter.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--deep" aria-labelledby="soon-title">
+    <div class="wrap" style="gap: 80px">
+      <div class="reveal" style="display: flex; flex-direction: column; gap: 18px">
+        <p class="kicker" style="display: flex; align-items: center; gap: 12px"><span class="rec-dot" aria-hidden="true"></span>02 / Coming soon to Android</p>
+        <h2 id="soon-title" style="font-size: clamp(56px, 7vw, 112px)">Two new Apex apps.</h2>
+      </div>
+
+      <article id="finance" class="spotlight" aria-labelledby="fin-title">
+        <div class="stage reveal">
+          <svg class="stage-ring" viewBox="0 0 400 400" fill="none" aria-hidden="true"><circle cx="200" cy="200" r="190" stroke="#232830"/><circle cx="200" cy="200" r="150" stroke="#ff8a3d" stroke-width="1.5" stroke-dasharray="2 14"/></svg>
+          <div class="phone" role="img" aria-label="Apex Finance app icon on a phone, coming soon">
+            <div class="phone-screen texture">
+              <div class="app-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#0b0d10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9l4-4 4 4M8 5v14"/><path d="M20 15l-4 4-4-4M16 19V5"/></svg></div>
+              <p class="app-name">Apex<br>Finance</p>
+              <p class="app-soon">COMING SOON</p>
+            </div>
+          </div>
+        </div>
+        <div class="spotlight-copy reveal">
+          <p class="pills"><span class="is-accent">COMING SOON</span><span>ANDROID</span></p>
+          <h3 id="fin-title">Apex Finance</h3>
+          <p class="tagline">Know what comes in and what goes out.</p>
+          <p class="desc">Apex Finance is an Android app for managing your income and expenses, so your money is in one clear place.</p>
+          <dl class="flow">
+            <div>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd6a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+              <div><dt>Income</dt><dd>money coming in</dd></div>
+            </div>
+            <div>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ff8a3d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+              <div><dt>Expenses</dt><dd>money going out</dd></div>
+            </div>
+          </dl>
+          <a class="btn" href="mailto:oliver@orivexs.team?subject=Apex%20Finance%20launch">Email me when it launches</a>
+        </div>
+      </article>
+
+      <article id="study" class="spotlight spotlight--flip" aria-labelledby="study-title">
+        <div class="spotlight-copy reveal">
+          <p class="pills"><span class="is-accent">COMING SOON</span><span>ANDROID</span><span>AI</span></p>
+          <h3 id="study-title">Apex AI Study Helper</h3>
+          <p class="tagline">An AI study partner, made for students.</p>
+          <p class="desc">Apex AI Study Helper is an Android app that helps students while they study. More on what it can do closer to launch.</p>
+          <a class="btn" href="mailto:oliver@orivexs.team?subject=Apex%20AI%20Study%20Helper%20launch">Email me when it launches</a>
+        </div>
+        <div class="stage reveal">
+          <svg class="stage-ring" viewBox="0 0 400 400" fill="none" aria-hidden="true"><circle cx="200" cy="200" r="190" stroke="#232830"/><circle cx="200" cy="200" r="150" stroke="#ff8a3d" stroke-width="1.5" stroke-dasharray="2 14"/></svg>
+          <div class="phone" role="img" aria-label="Apex AI Study Helper app icon on a phone, coming soon">
+            <div class="phone-screen texture">
+              <div class="app-icon app-icon--light"><svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="#0b0d10" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/></svg></div>
+              <p class="app-name">Apex AI<br>Study Helper</p>
+              <p class="app-soon">COMING SOON</p>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="shipped-title">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">03 / Out now</p>
+          <h2 id="shipped-title" class="h-xl">Already shipping.</h2>
+        </div>
+      </div>
+      <div class="grid" style="--min: 420px">
+        <article class="card card--warm reveal">
+          <p class="pills"><span class="is-rc">RELEASE CANDIDATE · v0.1.0rc1</span><span class="is-warm">OPEN SOURCE · MIT</span></p>
+          <h3 style="font-size: 56px">Apex <span class="accent">Core</span></h3>
+          <p>An open-source AI agent for your terminal. Bring your own API key or a local model; every edit and command asks first.</p>
+          <p class="mono" style="font-size: 13px; color: #cdb8a4">Python · Linux · macOS · Windows</p>
+          <div class="actions" style="margin-top: auto; gap: 8px 24px">
+            <a class="link-arrow" href="../apex-core/">Product page</a>
+            <a class="link-arrow" href="https://github.com/oliverhyar12-coder/Apex-Core">GitHub</a>
+          </div>
+        </article>
+        <article class="card reveal">
+          <p class="pills"><span class="is-live">LIVE</span><span>WEB</span></p>
+          <h3 style="font-size: 56px">orivexs.team</h3>
+          <p>The site you are on. Hand-built with no framework and no build step, and animated without slowing anyone down.</p>
+          <p class="mono" style="font-size: 13px; color: var(--faint)">HTML · CSS · JavaScript</p>
+          <div class="actions" style="margin-top: auto">
+            <a class="link-arrow" href="../">Home page</a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="pj-contact">
+    <div class="wrap" style="flex-direction: row; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 24px">
+      <h2 id="pj-contact" class="reveal" style="font-size: clamp(44px, 5vw, 72px); max-width: 14ch">Questions about a project?</h2>
+      <a class="mail-big reveal" href="mailto:oliver@orivexs.team" style="font-size: clamp(32px, 5vw, 72px)">oliver@orivexs.team</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© 2026 Orivexs Team · orivexs.team</span>
+    <a href="https://github.com/oliverhyar12-coder/Apex-Core">Apex Core on GitHub</a>
+  </div>
+</footer>
+</body>
+</html>

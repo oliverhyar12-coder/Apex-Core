@@ -86,6 +86,32 @@
     });
   });
 
+  // ---------- project board filter ----------
+
+  document.querySelectorAll("[data-board-filter]").forEach((group) => {
+    const board = document.getElementById(group.dataset.boardFilter);
+    const buttons = Array.from(group.querySelectorAll("button[data-filter]"));
+    const cards = Array.from(board.querySelectorAll("[data-platform]"));
+    const columns = Array.from(board.querySelectorAll(".board-col"));
+
+    function apply(filter) {
+      buttons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+      });
+      cards.forEach((card) => {
+        card.hidden = filter !== "all" && !card.dataset.platform.split(" ").includes(filter);
+      });
+      columns.forEach((column) => {
+        const shown = column.querySelectorAll("[data-platform]:not([hidden])").length;
+        column.querySelector("[data-col-count]").textContent = String(shown);
+        column.querySelector(".board-empty").hidden = shown > 0;
+      });
+    }
+
+    buttons.forEach((button) => button.addEventListener("click", () => apply(button.dataset.filter)));
+    apply("all");
+  });
+
   // ---------- scroll reveal ----------
 
   const revealed = document.querySelectorAll(".reveal");
