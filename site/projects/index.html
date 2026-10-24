@@ -142,7 +142,7 @@
               <div><dt>Expenses</dt><dd>money going out</dd></div>
             </div>
           </dl>
-          <a class="btn" href="mailto:oliver@orivexs.team?subject=Apex%20Finance%20launch">Email me when it launches</a>
+          <a class="btn" href="#notify" data-notify-app="finance">Email me when it's released</a>
         </div>
       </article>
 
@@ -152,7 +152,7 @@
           <h3 id="study-title">Apex AI Study Helper</h3>
           <p class="tagline">An AI study partner, made for students.</p>
           <p class="desc">Apex AI Study Helper is an Android app that helps students while they study. More on what it can do closer to launch.</p>
-          <a class="btn" href="mailto:oliver@orivexs.team?subject=Apex%20AI%20Study%20Helper%20launch">Email me when it launches</a>
+          <a class="btn" href="#notify" data-notify-app="study">Email me when it's released</a>
         </div>
         <div class="stage reveal">
           <svg class="stage-ring" viewBox="0 0 400 400" fill="none" aria-hidden="true"><circle cx="200" cy="200" r="190" stroke="#232830"/><circle cx="200" cy="200" r="150" stroke="#ff8a3d" stroke-width="1.5" stroke-dasharray="2 14"/></svg>
@@ -168,11 +168,48 @@
     </div>
   </section>
 
+  <section id="notify" class="section" aria-labelledby="notify-title">
+    <div class="wrap">
+      <div class="split" style="align-items: flex-start">
+        <div class="reveal">
+          <p class="kicker">03 / Launch list</p>
+          <h2 id="notify-title" class="h-xl">Get an email on release day.</h2>
+          <p style="color: var(--text-3)">Leave your email and pick the apps you want. You get one email when each one is released on Android.</p>
+        </div>
+        <div class="split-wide reveal">
+          <!-- Paste your Formspree form ID in place of YOUR_FORM_ID (see site/README.md). -->
+          <form class="notify-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST" data-notify-form novalidate>
+            <div class="field">
+              <label for="notify-email">Your email</label>
+              <input id="notify-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+            </div>
+            <fieldset class="field">
+              <legend>Email me when these are released</legend>
+              <label class="check"><input type="checkbox" name="apps" value="Apex Finance" data-app="finance" checked><span>Apex Finance</span></label>
+              <label class="check"><input type="checkbox" name="apps" value="Apex AI Study Helper" data-app="study" checked><span>Apex AI Study Helper</span></label>
+            </fieldset>
+            <input type="hidden" name="_subject" value="Launch list sign-up from orivexs.team">
+            <div class="hp" aria-hidden="true"><label for="notify-website">Leave this empty</label><input id="notify-website" type="text" name="_gotcha" tabindex="-1" autocomplete="off"></div>
+            <button class="btn" type="submit">Notify me</button>
+            <p class="notify-status" role="status" aria-live="polite"></p>
+            <p class="fine">We only use your email to tell you when these apps are released.</p>
+          </form>
+          <div class="notify-done" hidden tabindex="-1">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6fd6a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>
+            <p class="notify-done-title">You're on the list.</p>
+            <p class="notify-done-text"></p>
+            <button class="tab" type="button" data-notify-again>Add another email</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section" aria-labelledby="shipped-title">
     <div class="wrap">
       <div class="section-head reveal">
         <div>
-          <p class="kicker">03 / Out now</p>
+          <p class="kicker">04 / Out now</p>
           <h2 id="shipped-title" class="h-xl">Already shipping.</h2>
         </div>
       </div>

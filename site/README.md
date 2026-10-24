@@ -36,6 +36,20 @@ python -m http.server 8000 -d site
    stat counts and spotlight) — the page is plain HTML.
 3. **Set up email for oliver@orivexs.team** (see below). Owning the domain does not
    give you a mailbox.
+4. **Connect the launch list.** The "Email me when it's released" form on
+   `projects/index.html` needs somewhere to store sign-ups, and GitHub Pages cannot,
+   so it posts to [Formspree](https://formspree.io):
+   1. Sign up at formspree.io with oliver@orivexs.team and create a form, e.g. "Launch list".
+   2. Copy the form ID: the part after `/f/` in its endpoint URL.
+   3. In `site/projects/index.html`, replace `YOUR_FORM_ID` in
+      `action="https://formspree.io/f/YOUR_FORM_ID"` and push.
+   4. Send a test sign-up from the live site and confirm it in Formspree.
+
+   Each sign-up arrives by email and is listed in the Formspree dashboard with the
+   address and the apps picked; export the list as CSV on release day. Until the ID is
+   in, the form opens the visitor's email app with the request already written, so no
+   sign-up is lost. The free plan has a monthly submission limit. The form promises the
+   address is only used for release emails, so keep it that way.
 
 ## Deploy with GitHub Pages
 

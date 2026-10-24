@@ -112,6 +112,100 @@
     apply("all");
   });
 
+  // ---------- launch list sign-up ----------
+  // Posts to the form's action (a Formspree endpoint). Until a real form ID is
+  // pasted in, the request is handed to the visitor's email app instead.
+
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function listApps(apps) {
+    return apps.length > 1 ? apps.slice(0, -1).join(", ") + " and " + apps[apps.length - 1] : apps[0];
+  }
+
+  document.querySelectorAll("[data-notify-form]").forEach((form) => {
+    const emailInput = form.querySelector('input[name="email"]');
+    const boxes = Array.from(form.querySelectorAll('input[name="apps"]'));
+    const status = form.querySelector(".notify-status");
+    const button = form.querySelector('button[type="submit"]');
+    const done = form.parentElement.querySelector(".notify-done");
+    const doneText = done.querySelector(".notify-done-text");
+
+    function fail(message, field) {
+      status.textContent = message;
+      if (field) {
+        field.setAttribute("aria-invalid", "true");
+        field.focus();
+      }
+    }
+
+    emailInput.addEventListener("input", () => {
+      emailInput.removeAttribute("aria-invalid");
+      status.textContent = "";
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      const apps = boxes.filter((box) => box.checked).map((box) => box.value);
+      if (!EMAIL_PATTERN.test(email)) return fail("Please enter a valid email address.", emailInput);
+      if (!apps.length) return fail("Pick at least one app.", boxes[0]);
+      if (form.elements._gotcha.value) return; // filled in by a bot
+
+      const endpoint = form.getAttribute("action") || "";
+      if (!endpoint || endpoint.includes("YOUR_FORM_ID")) {
+        const subject = "Notify me: " + listApps(apps) + " release";
+        const body = "Please email me at " + email + " when " + listApps(apps) + (apps.length > 1 ? " are" : " is") + " released.";
+        window.location.href =
+          "mailto:oliver@orivexs.team?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+        status.textContent = "Your email app should open with the request ready to send.";
+        return;
+      }
+
+      const data = new FormData();
+      data.append("email", email);
+      data.append("apps", apps.join(", "));
+      data.append("_subject", form.elements._subject.value);
+      button.disabled = true;
+      status.textContent = "Sending...";
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: data,
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        status.textContent = "";
+        doneText.textContent =
+          "We will email " + email + " when " + listApps(apps) + (apps.length > 1 ? " are" : " is") + " released.";
+        form.hidden = true;
+        done.hidden = false;
+        done.focus();
+      } catch (error) {
+        status.textContent = "That did not go through. Please try again, or email oliver@orivexs.team.";
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    done.querySelector("[data-notify-again]").addEventListener("click", () => {
+      emailInput.value = "";
+      done.hidden = true;
+      form.hidden = false;
+      emailInput.focus();
+    });
+
+    document.querySelectorAll("[data-notify-app]").forEach((link) => {
+      link.addEventListener("click", () => {
+        boxes.forEach((box) => {
+          box.checked = box.dataset.app === link.dataset.notifyApp;
+        });
+        done.hidden = true;
+        form.hidden = false;
+        setTimeout(() => emailInput.focus({ preventScroll: true }), 500);
+      });
+    });
+  });
+
   // ---------- scroll reveal ----------
 
   const revealed = document.querySelectorAll(".reveal");
