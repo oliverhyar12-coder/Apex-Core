@@ -43,20 +43,50 @@ def guard(func: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
-def open_in_editor(path: Path) -> None:
-    """Open ``path`` in $VISUAL / $EDITOR (Notepad on Windows, else nano/vim/vi)."""
-    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
-    if editor:
-        argv = [*shlex.split(editor, posix=not IS_WINDOWS), str(path)]
-    elif IS_WINDOWS:
-        argv = ["notepad.exe", str(path)]
-    else:
-        found = next(
-            (which_no_cwd(name) for name in ("nano", "vim", "vi") if which_no_cwd(name)), None
-        )
+def editor_argv(path: Path) -> list[str]:
+    """The command that opens ``path`` in $VISUAL / $EDITOR (default: Notepad on
+    Windows, else nano/vim/vi).
+
+    The variable may hold a program with arguments (``code --wait``), a quoted path
+    (``"C:\\Program Files\\Notepad++\\notepad++.exe"``), or an unquoted absolute
+    path with spaces. Bare program names are looked up on PATH without the current
+    directory, so a repository cannot ship its own "editor".
+    """
+    editor = (os.environ.get("VISUAL") or os.environ.get("EDITOR") or "").strip()
+    if not editor:
+        names = ("notepad",) if IS_WINDOWS else ("nano", "vim", "vi")
+        found = next((p for p in map(which_no_cwd, names) if p is not None), None)
+        if found is None and IS_WINDOWS:
+            system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
+            found = Path(system_root) / "System32" / "notepad.exe"
         if found is None:
             raise ConfigError("No text editor found.", hint="Set the EDITOR environment variable.")
-        argv = [str(found), str(path)]
+        return [str(found), str(path)]
+    if Path(editor).is_absolute() and Path(editor).is_file():
+        parts = [editor]
+    else:
+        parts = shlex.split(editor, posix=not IS_WINDOWS)
+        if IS_WINDOWS:
+            # Non-POSIX splitting keeps the quotes around "C:\Program Files\...".
+            parts = [p[1:-1] if len(p) >= 2 and p[0] == p[-1] == '"' else p for p in parts]
+    if not parts or not parts[0]:
+        raise ConfigError(f"Cannot use EDITOR={editor!r}.", hint="Set it to your editor's path.")
+    program = parts[0]
+    separators = ("/", "\\") if IS_WINDOWS else ("/",)
+    if not any(sep in program for sep in separators):
+        found = which_no_cwd(program)
+        if found is None:
+            raise ConfigError(
+                f"The editor {program!r} was not found on PATH.",
+                hint="Set EDITOR to the editor's full path.",
+            )
+        program = str(found)
+    return [program, *parts[1:], str(path)]
+
+
+def open_in_editor(path: Path) -> None:
+    """Open ``path`` in the user's editor and wait for it to close."""
+    argv = editor_argv(path)
     try:
         subprocess.run(argv, check=False)
     except OSError as exc:

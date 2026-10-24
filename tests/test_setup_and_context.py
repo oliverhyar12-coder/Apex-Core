@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -211,6 +212,44 @@ def test_open_in_editor_uses_editor_variable(monkeypatch: pytest.MonkeyPatch, tm
     monkeypatch.setenv("EDITOR", quoted)
     open_in_editor(target)
     assert target.read_text(encoding="utf-8") == "edited"
+
+
+def test_editor_is_found_on_path_not_in_the_current_directory(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from apexcore.cli.common import editor_argv
+
+    name = "myed.bat" if os.name == "nt" else "myed"
+    bin_dir, repo = tmp_path / "bin", tmp_path / "repo"
+    for folder in (bin_dir, repo):  # the repository ships a decoy with the same name
+        folder.mkdir()
+        (folder / name).write_text("@echo off\n" if os.name == "nt" else "#!/bin/sh\n",
+                                   encoding="utf-8")  # fmt: skip
+        (folder / name).chmod(0o755)
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.delenv("VISUAL", raising=False)
+    monkeypatch.setenv("EDITOR", "myed --wait")
+    argv = editor_argv(tmp_path / "note.md")
+    assert os.path.samefile(argv[0], bin_dir / name)
+    assert argv[1:] == ["--wait", str(tmp_path / "note.md")]
+    monkeypatch.setenv("EDITOR", "no-such-editor")
+    with pytest.raises(ConfigError, match="not found on PATH"):
+        editor_argv(tmp_path / "note.md")
+
+
+def test_editor_paths_with_spaces(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from apexcore.cli.common import editor_argv
+
+    folder = tmp_path / "Program Files" / "Ed"
+    folder.mkdir(parents=True)
+    exe = folder / ("ed.exe" if os.name == "nt" else "ed")
+    exe.write_text("", encoding="utf-8")
+    monkeypatch.delenv("VISUAL", raising=False)
+    monkeypatch.setenv("EDITOR", str(exe))  # unquoted
+    assert editor_argv(tmp_path / "n.md") == [str(exe), str(tmp_path / "n.md")]
+    monkeypatch.setenv("EDITOR", f'"{exe}" --wait')  # quoted, with an argument
+    assert editor_argv(tmp_path / "n.md") == [str(exe), "--wait", str(tmp_path / "n.md")]
 
 
 def test_history_clear_also_clears_typed_input() -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -20,6 +21,15 @@ KEY = "sk-local-test-key-abcdefghijklmnop"
 
 def apex(*args: str, input: str | None = None):
     return runner.invoke(app, list(args), input=input)
+
+
+# Typer forces styled help when GITHUB_ACTIONS is set, which splits option names
+# such as --continue with escape codes. Compare help text without them.
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(text: str) -> str:
+    return _ANSI.sub("", text)
 
 
 def configure_local(
@@ -44,6 +54,7 @@ def configure_local(
 def test_help_lists_only_real_commands() -> None:
     result = apex("--help")
     assert result.exit_code == 0
+    output = plain(result.stdout)
     for command in (
         "init",
         "doctor",
@@ -55,9 +66,12 @@ def test_help_lists_only_real_commands() -> None:
         "task",
         "tools",
         "history",
+        "setup",
+        "model",
+        "memory",
     ):
-        assert command in result.stdout
-    assert "--install-completion" not in result.stdout
+        assert command in output
+    assert "--install-completion" not in output
 
 
 @pytest.mark.parametrize(
@@ -93,7 +107,8 @@ def test_version() -> None:
 def test_no_arguments_without_terminal_shows_help() -> None:
     # In a real terminal `apex` opens the chat; in a pipe it prints help.
     result = apex()
-    assert result.exit_code == 0 and "Usage" in result.output and "--continue" in result.output
+    output = plain(result.output)
+    assert result.exit_code == 0 and "Usage" in output and "--continue" in output
 
 
 def test_chat_options_belong_to_chat() -> None:

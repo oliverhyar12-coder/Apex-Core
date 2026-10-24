@@ -82,7 +82,8 @@ yourself. A provider sees everything you send it.
   is disabled unless you explicitly set `permissions.allow_elevated = true`.
 - **PATH hijacking.** Program names are resolved against absolute `PATH` entries only,
   never the current directory (which Windows and `shutil.which` search first), so a
-  repository cannot shadow `git` or `python` with its own executable.
+  repository cannot shadow `git` or `python` with its own executable. The same lookup
+  finds the editor for `apex memory edit` and the shell for `!command` on Windows.
 - **Windows batch files.** `.bat` and `.cmd` programs are run by `cmd.exe`, which
   re-parses arguments. Arguments containing `& | < > ^ % ! " ( )` are refused for them.
 - **Containment of the process.** stdin is closed, the working directory must be in the
