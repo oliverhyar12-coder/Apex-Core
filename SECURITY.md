@@ -20,7 +20,7 @@ APEX CORE treats these as **untrusted**:
 
 - everything the model produces (tool calls, arguments, commands, file contents);
 - the contents of the repository and workspace (files, `.gitattributes`, scripts, a
-  `.env` file in the working directory);
+  `.env` file in the working directory, and instruction files such as `AGENTS.md`);
 - command output and provider error messages.
 
 APEX CORE trusts:
@@ -63,12 +63,17 @@ yourself. A provider sees everything you send it.
 - **No shell.** `run_command` takes an argv list and runs it with `shell=False`. Pipes,
   redirection, globbing, `&&`, and variable expansion are not interpreted.
 - **Approval for every command** by default, showing the resolved program path, the
-  working directory, and the timeout. `permissions.auto_approve_commands` can
-  pre-approve argv *prefixes* you trust.
+  working directory, and the timeout. At the prompt you can allow a command once, for
+  the session (that exact argv), or always (that exact argv, saved to
+  `permissions.always_allowed_commands`; it never matches a longer command).
+  `permissions.auto_approve_commands` can pre-approve argv *prefixes* you trust.
+- **Auto mode** (`/auto`, `--auto`) approves edits and unflagged commands for one
+  session. It needs an interactive terminal: in a pipe or CI job it approves nothing.
 - **Always refused:** privilege escalation (`sudo`, `su`, `doas`, `pkexec`, `runas`,
   `gsudo`), disk and filesystem tools (`mkfs*`, `dd`, `format`, `diskpart`, `fdisk`,
   `parted`, `wipefs`, `diskutil`, ...), and shutdown or reboot commands.
-- **Flagged and never auto-approved:** deleting or moving files (`rm`, `del`, `mv`,
+- **Flagged and never approved automatically** (not by `auto_approve_commands`,
+  "always", "session", or auto mode): deleting or moving files (`rm`, `del`, `mv`,
   ...), permission changes, process killing, network transfer (`curl`, `wget`, `scp`,
   `ssh`, ...), destructive git operations (`reset --hard`, `clean`, `push --force`,
   `branch -D`, ...), `find -delete/-exec`, any shell (`bash`, `cmd`, `powershell`), and
@@ -87,6 +92,38 @@ yourself. A provider sees everything you send it.
 - **Environment scrubbing.** Variables whose names contain `API_KEY`, `TOKEN`,
   `SECRET`, `PASSWORD`, `CREDENTIAL`, `PRIVATE_KEY`, `ACCESS_KEY`, or `SESSION_KEY`, and
   every configured `api_key_env`, are removed from the child environment.
+
+### Chat shell escape (`!command`)
+
+`!command` in the chat runs a command **you** typed, in your own shell (`$SHELL -c`, or
+PowerShell on Windows), in the workspace directory, with your normal environment and
+stdin closed. None of the tool protections above apply, because it is not the agent
+acting. The model never sees the command or its output, and the model cannot trigger
+it. Commands starting with `sudo`, `su`, `doas`, or `runas` are refused because their
+password prompt cannot be shown; this is a convenience, not a security boundary.
+
+### Memory, project instructions, and persona
+
+- **Memory** (`MEMORY.md`, `USER.md` in the data directory) is written by the model
+  through the `memory` tool, so it is model output. Each entry is limited to 600
+  characters (2,200 and 1,375 per file), and entries are refused if they contain a
+  known secret format or match the prompt-injection scanner. Every save is shown in
+  the activity feed. Memory is read once when a conversation starts and included in the
+  instructions for that conversation. Review it with `apex memory`, set
+  `permissions.memory = "ask"` to approve each change, or `memory.enabled = false` to
+  turn it off.
+- **Project instructions** (`APEX.md`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`) are
+  read only from the workspace root, through the same containment checks as the file
+  tools (a symlink pointing outside the workspace is ignored). They are scanned for
+  invisible Unicode characters, instruction-override and role-hijack phrases, hidden
+  HTML comments, pipe-to-shell commands, and attempts to read or send credentials. A
+  file with findings is **not loaded**, and the chat banner says why. Loaded text is
+  capped at 20,000 characters and placed after the safety rules, marked as project
+  content that cannot override them. `agent.context_files = false` turns this off.
+- **`SOUL.md`** in your configuration directory is your own file, so it is loaded even
+  if the scanner finds something; the banner then lists the findings so you can check.
+- The scanner is pattern-based. It catches common injection text, not every possible
+  phrasing.
 
 ### Git
 
@@ -128,7 +165,10 @@ request.
 ### Local data
 
 - Configuration and history directories are created `0700`, and files `0600`, on
-  POSIX. On Windows the per-user `AppData` ACLs apply.
+  POSIX. On Windows the per-user `AppData` ACLs apply. This covers the memory files and
+  the typed-input history.
+- The typed-input history (for the up-arrow) has known secret formats masked before it
+  is written. `history.save_input = false` turns it off; `apex history clear` deletes it.
 - History uses SQLite with `secure_delete` on, so deleted conversations are overwritten.
   `apex history clear` also runs `VACUUM`.
 - There is no telemetry and no network traffic except to the provider you configure.
@@ -139,8 +179,13 @@ request.
   project's test suite runs that project's code (`conftest.py`, `package.json`
   scripts, build files). For untrusted code, use `--read-only`, or run APEX CORE inside
   a container (Docker or Podman), a VM, or Windows Sandbox.
-- **Approval fatigue.** "Always allow" and `auto_approve_commands` trade safety for
-  convenience. Keep the auto-approve list short and specific.
+- **Approval fatigue.** "Always", auto mode, and `auto_approve_commands` trade safety
+  for convenience. Keep those lists short and specific (`apex tools` shows them), and
+  use auto mode only in repositories you trust.
+- **Memory poisoning.** A malicious file could persuade the model to save a misleading
+  memory note, which would then appear in later conversations. The scanner refuses
+  obvious injection text, and every save is visible in the feed, but check
+  `apex memory` from time to time.
 - **Redaction is best-effort.** Secrets in formats it does not recognise can reach the
   model, and anything you paste yourself is sent as typed. Anything a tool reads is sent
   to your provider.

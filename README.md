@@ -1,21 +1,30 @@
 # APEX CORE
 
 APEX CORE is an open-source AI assistant and coding agent that runs entirely in your
-terminal. You bring your own API key (or a local model), and the `apex` command gives
-you chat, one-shot questions, and agent tasks that can read your project, propose edits
-as diffs, and run commands only after you approve them.
+terminal. Run `apex` in a project folder and chat with an agent that reads your code,
+keeps a plan, remembers your preferences, proposes edits as diffs, and runs commands
+only after you approve them. You bring your own API key, or use a local model.
 
 - **Terminal only.** No GUI, web dashboard, background service, or telemetry.
 - **Bring your own provider.** OpenAI, Anthropic, DeepSeek, Google Gemini, Mistral,
   OpenRouter, Groq, Ollama, LM Studio, or any OpenAI-compatible endpoint.
+- **A proper chat.** Streaming Markdown answers, a live feed of what the agent is doing,
+  slash commands with Tab completion, multi-line input, saved conversations you can
+  resume, and long-term memory. The design is inspired by Nous Research's
+  [Hermes Agent](https://github.com/NousResearch/hermes-agent) (this project is not
+  affiliated with it).
 - **Safe by default.** Reading is limited to the workspace; every edit and command asks
-  first; credentials files and `.git` are off-limits; commands run without a shell.
+  first (once, for the session, or always); credentials files and `.git` are off-limits;
+  commands run without a shell.
 - **Cross-platform.** Linux (including Arch and CachyOS), macOS (Apple Silicon and
   Intel), and Windows 10/11 (PowerShell, Windows Terminal, Command Prompt).
 
-> **Status: 0.1.0rc1, a release candidate.** It is not published on PyPI yet;
-> install it from GitHub as shown below. See [Platform status](#platform-status) for what
-> has been verified where, and [Limitations](#limitations) for what is not done yet.
+> **Status: 0.2.0rc1, a release candidate.** It is not published on PyPI; install it
+> from GitHub as shown below. See [Platform status](#platform-status) for what has been
+> verified where, and [Limitations](#limitations) for what is not done yet.
+
+**New here? Read the [usage guide](docs/USAGE.md)**: first run, chatting, approvals,
+slash commands, memory, and sessions, with examples.
 
 ## Contents
 
@@ -34,99 +43,121 @@ as diffs, and run commands only after you approve them.
 
 ## Install
 
-You need **Python 3.11 or newer**. `git` is optional; it is used for the `git_status`
-and `git_diff` tools. The recommended installer is [pipx](https://pipx.pypa.io), which
-puts `apex` in its own isolated environment.
+You need **Python 3.11 or newer**. `git` is used to download the code and by the
+`git_status` and `git_diff` tools.
 
 > **Important:** the package named `apex-core` on PyPI is an **unrelated project**.
 > Do not run `pip install apex-core`. This project's distribution name is
-> `apex-core-cli`, and it has not been published to PyPI yet.
+> `apex-core-cli`, and it has not been published to PyPI.
 
-### Linux
-
-```bash
-# Arch Linux / CachyOS
-sudo pacman -S python-pipx
-# Debian / Ubuntu
-sudo apt install pipx
-# Fedora
-sudo dnf install pipx
-
-pipx ensurepath          # then open a new terminal
-pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"
-apex --version
-```
-
-### macOS
+### Linux and macOS (including Arch and CachyOS)
 
 ```bash
-# With Homebrew (optional):  brew install pipx
-# Without Homebrew:
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath   # then open a new terminal
-
-pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"
-apex --version
+git clone https://github.com/oliverhyar12-coder/Apex-Core.git
+cd Apex-Core
+bash scripts/install.sh
 ```
+
+Or without cloning:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/oliverhyar12-coder/Apex-Core/main/scripts/install.sh | bash
+```
+
+Then **open a new terminal** and run `apex`.
+
+The installer finds Python 3.11+, creates a private virtual environment in
+`~/.local/share/apex-core/venv`, links `apex` into `~/.local/bin`, and adds that folder
+to your PATH in bash, zsh, fish, or `~/.profile`. It does not need pipx and never uses
+sudo. If Python is missing it prints the command for your system, for example
+`sudo pacman -S python` on Arch and CachyOS. Options: `--with-keyring`, `--ref BRANCH`,
+`--source PATH`, `--uninstall`. Environment variables: `APEX_INSTALL_DIR`,
+`APEX_BIN_DIR`, and `APEX_NO_MODIFY_PATH=1`.
 
 ### Windows (PowerShell)
 
-Install Python 3.11+ from [python.org](https://www.python.org/downloads/windows/) or
-the Microsoft Store, and `git` from [git-scm.com](https://git-scm.com/download/win)
-(needed to install from GitHub). Then:
+Install Python 3.11+ from [python.org](https://www.python.org/downloads/windows/) (tick
+"Add python.exe to PATH") and [git](https://git-scm.com/download/win). Then:
 
 ```powershell
-py -m pip install --user pipx
-py -m pipx ensurepath        # then open a new terminal
+git clone https://github.com/oliverhyar12-coder/Apex-Core.git
+cd Apex-Core
+powershell -ExecutionPolicy Bypass -File scripts\install.ps1
+```
+
+Or without cloning:
+
+```powershell
+irm https://raw.githubusercontent.com/oliverhyar12-coder/Apex-Core/main/scripts/install.ps1 | iex
+```
+
+It installs into `%LOCALAPPDATA%\apex-core` and adds `%LOCALAPPDATA%\apex-core\bin` to
+your user PATH. Open a new window and run `apex`. Options: `-WithKeyring`, `-Ref BRANCH`,
+`-Source PATH`, `-Uninstall`.
+
+WSL is not required. Windows Terminal is recommended for the best colours and Unicode
+support, but plain PowerShell and Command Prompt work too.
+
+### Update and uninstall
+
+Run the installer again to update. To remove it, run `bash scripts/install.sh --uninstall`
+(Windows: `scripts\install.ps1 -Uninstall`). Your configuration, memory, and history are
+kept; see [Configuration](#configuration) for where they are, or run
+`apex history clear` and `apex memory clear` first.
+
+### With pipx or pip instead
+
+```bash
 pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"
-apex --version
+# or, in a virtual environment of your own:
+python3 -m venv ~/.venvs/apex && ~/.venvs/apex/bin/pip install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"
 ```
 
-WSL is not required. Windows Terminal is recommended for the best colours and
-Unicode support, but plain PowerShell and Command Prompt work too.
-
-### Optional: OS keyring support
-
-To store API keys in the macOS Keychain, Windows Credential Locker, or the Linux
-Secret Service instead of environment variables:
-
-```bash
-pipx inject apex-core-cli keyring
-```
-
-### Without pipx
-
-```bash
-python3 -m venv ~/.venvs/apex          # Windows: py -m venv $HOME\venvs\apex
-~/.venvs/apex/bin/pip install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"
-~/.venvs/apex/bin/apex --version       # Windows: $HOME\venvs\apex\Scripts\apex.exe
-```
-
-### Upgrade and uninstall
-
-```bash
-pipx upgrade apex-core-cli      # or: pipx install --force "git+https://..."
-pipx uninstall apex-core-cli
-```
-
-Uninstalling leaves your configuration and history in place; see
-[Configuration](#configuration) for where they are, or run `apex history clear` first.
+Add keyring support with `pipx inject apex-core-cli keyring`. If pipx fails with
+`ModuleNotFoundError: No module named 'filelock'` (seen on CachyOS), the problem is in
+the system's pipx, not APEX CORE: run `sudo pacman -S python-filelock`, or use the
+installer script above.
 
 ## Quick start
 
 ```bash
-apex init        # pick a provider and model (interactive)
+cd ~/my-project
+apex
 ```
 
-`init` tells you which environment variable needs your API key. Set it in your shell
-(see [Providers and API keys](#providers-and-api-keys)), then:
+The first run walks you through setup: choose a provider, paste your API key (hidden;
+stored only on this computer, never in the config file), and APEX CORE checks the key
+and lists the models it can use so you can pick one. Then the chat opens:
 
-```bash
-apex doctor      # check everything; add --online to test the connection
-apex chat        # interactive chat in the current directory
+```text
+╭─ APEX CORE 0.2.0rc1 ─────────────────────────────────────────────────────────╮
+│     model  deepseek-chat  ·  deepseek                                        │
+│ workspace  ~/my-project                                                      │
+│     tools  read files · edit (ask) · run (ask) · plan · memory               │
+│    memory  0 notes · 0 about you                                             │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Type a message and press Enter · /help for commands and keys · Ctrl+D exits
+
+› why does tests/test_api.py fail?
+┊ 📖 read tests/test_api.py  ✓ 0.0s
+┊ 🔍 search 'def login' in .  ✓ 0.0s
 ```
 
-Non-interactive setup, for example for scripts:
+When it wants to run the tests, it asks first (see [Approvals](#approvals)), then shows
+the end of the output:
+
+```text
+┊ 💻 run python -m pytest tests/test_api.py -q  ✗ 2.1s
+┊    FAILED tests/test_api.py::test_login - AssertionError
+┊    1 failed, 4 passed in 0.31s
+┊    exit code 1
+```
+
+Type a message and press Enter. `/help` lists the commands and Ctrl+D exits. Next
+time, `apex -c` continues where you left off. No API key? Choose `ollama` or `lmstudio`
+to use a model running on your own machine.
+
+To set up without prompts, for example in scripts:
 
 ```bash
 apex init --provider openai --model <model-id>
@@ -154,7 +185,7 @@ key can use, and `apex providers` shows which providers are configured and wheth
 keys are present.
 
 Add any other OpenAI-compatible server (vLLM, llama.cpp server, LiteLLM, a corporate
-gateway...):
+gateway...) in `apex setup`, or with:
 
 ```bash
 apex providers add mygateway --base-url https://llm.example.com/v1 \
@@ -163,9 +194,10 @@ apex providers add mygateway --base-url https://llm.example.com/v1 \
 
 ### Setting your API key
 
-APEX CORE never stores keys in `config.toml`. It looks for a key in this order:
+The easiest way is to paste it into `apex setup` (or the first-run setup). APEX CORE
+never stores keys in `config.toml`. It looks for a key in this order:
 
-1. **An environment variable** (the name `apex init` showed, e.g. `OPENAI_API_KEY`):
+1. **An environment variable** (the name `apex doctor` shows, e.g. `OPENAI_API_KEY`):
 
    | Shell                  | This session                       | Permanently                                                         |
    |------------------------|------------------------------------|---------------------------------------------------------------------|
@@ -176,9 +208,10 @@ APEX CORE never stores keys in `config.toml`. It looks for a key in this order:
 
 2. **The private credentials file** in your configuration directory
    (`apex config path` shows it): `apex config set-key openai --env-file`.
-   On Linux and macOS the file is created readable only by you.
-3. **The OS keyring**, if the optional `keyring` package is installed:
-   `apex config set-key openai`.
+   On Linux and macOS the file is created readable only by you. `apex setup` uses this
+   file when no OS keyring is available.
+3. **The OS keyring**, if the optional `keyring` package is installed (installer option
+   `--with-keyring`): `apex config set-key openai`.
 
 APEX CORE deliberately **ignores `.env` files in your working directory**: a repository
 you clone must not be able to change where your API traffic goes.
@@ -187,50 +220,78 @@ you clone must not be able to change where your API traffic goes.
 
 | Command | What it does |
 |---|---|
-| `apex init` | Choose a provider and model; create the config and history database. |
+| `apex` | Open the chat in the current folder (runs setup the first time). Same as `apex chat`. |
+| `apex setup` | Choose a provider, paste an API key, and pick a model. |
+| `apex model` | Switch to another provider or model. |
+| `apex init` | Set up from flags; without flags it is the same as `apex setup`. |
 | `apex doctor [--online]` | Check Python, paths, config, API key, history, git, and terminal; `--online` also contacts the provider. |
 | `apex config [show\|path\|get\|set\|unset\|set-key\|delete-key]` | View and change settings and stored keys. |
 | `apex providers [list\|add\|remove\|use]` | Manage providers. |
 | `apex models [-p PROVIDER]` | List models offered by a provider. |
-| `apex chat` | Interactive chat with workspace tools. |
 | `apex ask "question"` | One question; the answer goes to stdout, status to stderr. |
-| `apex task "description"` | Let the agent work on a task, approving each edit and command. |
+| `apex task "description"` | Let the agent work on one task, approving each edit and command. |
 | `apex tools` | List tools and whether each runs automatically or asks first. |
+| `apex memory [show\|edit\|clear\|path]` | See, edit, or clear what the agent remembers. |
 | `apex history [list\|show\|delete\|clear]` | View and delete local history. |
 
-Common options: `--provider/-p`, `--model/-m`, `--workspace/-w DIR` (default: the current
-directory), `--read-only`, and `--no-history`. Run `apex <command> --help` for the rest.
+Chat options (after `apex` or `apex chat`): `-c/--continue`, `-r/--resume ID-OR-TITLE`,
+`-p/--provider`, `-m/--model`, `-w/--workspace DIR` (default: the current directory),
+`--read-only`, `--no-tools`, `--auto`, and `--no-history`. Run `apex <command> --help`
+for the rest.
 
 ### Chat
 
+| Key | What it does |
+|---|---|
+| Enter | Send. |
+| Alt+Enter, Ctrl+J, or a line ending in `\` | New line. Pasted text keeps its lines. |
+| Up / Down | Earlier messages. |
+| `/` then Tab | Complete a slash command. |
+| `!command` | Run a shell command yourself; the output is shown to you, not the model. |
+| Ctrl+C | Stop the agent's current answer; at the prompt, clear the line; twice to exit. |
+| Ctrl+D | Exit. |
+
+Slash commands: `/help`, `/new` (also `/reset`, `/clear`), `/model [name|provider:name]`,
+`/retry`, `/undo`, `/compress [focus]`, `/usage`, `/tools`, `/plan`, `/memory [clear]`,
+`/personality [name|none]`, `/auto`, `/title NAME`, `/sessions`, `/resume ID-OR-TITLE`,
+and `/exit` (also `/quit`). The [usage guide](docs/USAGE.md) explains each one.
+
+The bottom bar shows the model, tokens used, estimated cost (if prices are configured),
+the approximate context size, and modes such as `AUTO` or `READ-ONLY`. Each answer ends
+with a one-line summary of tools used, tokens, and time.
+
+### Approvals
+
+Before an edit you see the diff; before a command you see the exact program, arguments,
+directory, and timeout:
+
 ```text
-$ apex chat
-you> why does the test in tests/test_api.py fail?
-  -> read tests/test_api.py
-     ok
-  ...
+╭─ Run command? ───────────────────────────────────────────────────────────────╮
+│ run python -m pytest -q                                                      │
+│ program: /usr/bin/python                                                     │
+│ directory: .                                                                 │
+│ timeout: 120s                                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯
+[o]nce | [s]ession | [a]lways | [d]eny  (Enter = deny, or type a reason)
+Allow?
 ```
 
-Inside a chat:
+`o` allows it once. `s` allows it for the rest of this chat (all edits, or this exact
+command). `a` always allows this exact command, saved to
+`permissions.always_allowed_commands`. `d` or Enter denies it, and anything else you
+type denies it and tells the agent why. Destructive or opaque commands (`rm`,
+`git reset --hard`, `curl`, shells, `python -c`...) carry a warning and never offer
+`s` or `a`.
 
-| Input | Effect |
-|---|---|
-| `/help` | List chat commands. |
-| `/model [name]` | Show the model, or switch models for this session. |
-| `/clear` | Start a new conversation. |
-| `/tools` | Show the tools in this session. |
-| `/usage` | Show token usage (and estimated cost, if configured). |
-| `/exit`, `/quit` | Leave. Ctrl+D (Ctrl+Z then Enter on Windows) also works. |
-| Ctrl+C | While the model is working: cancel that turn. At the prompt: leave. |
-
-`apex chat --resume <id>` continues a saved chat, `--no-tools` turns tools off, and
-`--read-only` allows only reading.
+`/auto` (or `--auto`) approves edits and ordinary commands for the rest of the chat;
+flagged commands still ask, blocked ones are still refused, and without an interactive
+terminal it has no effect.
 
 ### Ask
 
 ```bash
 apex ask "Explain the difference between a process and a thread"
-git diff | apex ask -                     # read the question from stdin
+git diff | apex ask -                          # read the question from stdin
 apex ask --tools "What does src/main.py do?"   # allow read-only file tools
 ```
 
@@ -245,15 +306,25 @@ apex task --read-only "Review this repository for obvious bugs"
 apex task --max-steps 25 "Make the failing tests pass"
 ```
 
-The agent reads files freely inside the workspace. Before every edit it shows a diff,
-and before every command it shows the exact program and arguments. Answer `y`
-(yes), `n` (no), `a` (for the rest of the session: allow all edits, or allow this exact
-command again; never offered for flagged commands), or type a reason to refuse with
-feedback to the model. At the end you get a table of every action
-and its result.
+The same agent as the chat, for one request, with the same approval prompt. At the end
+you get a table of every action and its result. Without an interactive terminal (in a
+pipe or a CI job), anything that needs approval is refused, and those tools are not
+offered to the model.
 
-Without an interactive terminal (in a pipe or a CI job), anything that needs approval
-is refused, and those tools are not offered to the model.
+### Memory, project instructions, and persona
+
+- **Memory.** The agent keeps two small notebooks, `MEMORY.md` (about your environment
+  and projects) and `USER.md` (about you), and reads them at the start of each new
+  conversation. You see a `💾` line in the feed whenever it saves something. Manage them
+  with `/memory` or `apex memory`; turn them off with `memory.enabled = false`.
+- **Project instructions.** An `APEX.md`, `AGENTS.md`, `CLAUDE.md`, or `.cursorrules`
+  file at the workspace root is added to the agent's instructions (the first one found;
+  `agent.context_files = false` turns this off). Files that look like prompt-injection
+  attempts are not loaded, and the banner says so.
+- **Persona.** `SOUL.md` in your configuration directory replaces the agent's default
+  identity, and `/personality` (or `agent.personality`) changes its tone. Built in:
+  concise, technical, teacher, creative, friendly, pirate. Add your own under
+  `[agent.personalities]`.
 
 ### Exit codes
 
@@ -262,13 +333,14 @@ is refused, and those tools are not offered to the model.
 
 ## Configuration
 
-Settings live in `config.toml`, history in `history.sqlite3`:
+Settings live in `config.toml`; history, memory, and input history in the data
+directory:
 
-| OS      | Configuration                                         | History                                         |
-|---------|-------------------------------------------------------|-------------------------------------------------|
+| OS      | Configuration                                         | Data                                              |
+|---------|-------------------------------------------------------|---------------------------------------------------|
 | Linux   | `~/.config/apex-core/` (or `$XDG_CONFIG_HOME`)        | `~/.local/share/apex-core/` (or `$XDG_DATA_HOME`) |
-| macOS   | `~/Library/Application Support/apex-core/`           | same                                            |
-| Windows | `%LOCALAPPDATA%\apex-core\`                           | same                                            |
+| macOS   | `~/Library/Application Support/apex-core/`           | same                                              |
+| Windows | `%LOCALAPPDATA%\apex-core\`                           | same                                              |
 
 Set `APEX_CONFIG_DIR` and `APEX_DATA_DIR` to use other directories; `apex config path`
 prints what is in effect.
@@ -296,11 +368,18 @@ currency = "USD"
 
 [agent]
 max_steps = 12          # model calls per turn
+personality = "concise" # optional; see /personality
+context_files = true    # load AGENTS.md and friends from the workspace root
+
+[agent.personalities]
+reviewer = "Review like a strict senior engineer. Point out risks first."
 
 [permissions]
 write = "ask"           # ask | allow | deny
 execute = "ask"         # ask | deny
-auto_approve_commands = [["git", "status"], ["python", "-m", "pytest"]]
+memory = "allow"        # allow | ask | deny (the agent's own notes, never your files)
+auto_approve_commands = [["git", "status"], ["python", "-m", "pytest"]]  # prefixes
+always_allowed_commands = []   # exact commands you allowed with [a]lways
 allow_elevated = false  # never run commands while apex runs as root/Administrator
 
 [tools]
@@ -311,6 +390,14 @@ extra_ignore_dirs = ["vendor"]
 
 [history]
 enabled = true
+save_input = true       # remember typed messages for the up-arrow (redacted, private)
+
+[memory]
+enabled = true
+
+[ui]
+markdown = true         # render answers as Markdown in the chat
+emoji = true            # emoji in the activity feed
 ```
 
 Use `apex config set` rather than editing by hand if you like (values are validated
@@ -324,7 +411,8 @@ apex config set permissions.auto_approve_commands '[["python", "-m", "pytest"]]'
 
 Every setting can also come from the environment as `APEX_<SECTION>__<KEY>`, for example
 `APEX_AGENT__MAX_STEPS=20`. `APEX_PROVIDER` and `APEX_MODEL` pick the provider and model
-for one shell session. Command-line options override everything.
+for one shell session. Command-line options override everything. `APEX_SIMPLE_INPUT=1`
+switches the chat to plain line input, for terminals where the rich input misbehaves.
 
 ## Security model
 
@@ -335,19 +423,22 @@ The short version (details and limits in [SECURITY.md](SECURITY.md)):
   `*.pem`, `id_rsa`, `.npmrc`, ...) are blocked.
 - **Approval.** Edits show a diff and commands show the exact argv before anything
   happens. Destructive or opaque commands (`rm`, `git reset --hard`, `bash -c`,
-  `python -c`, ...) are flagged and can never be auto-approved. Privilege escalation
-  (`sudo`, `runas`...), disk formatting, and shutdown commands are always refused.
+  `python -c`, ...) are flagged and are never approved automatically, not by
+  `auto_approve_commands`, `[a]lways`, or `/auto`. Privilege escalation (`sudo`,
+  `runas`...), disk formatting, and shutdown commands are always refused.
 - **No shell.** Commands run from an argument list, with stdin closed, a timeout, an
   output cap, a working directory inside the workspace, and credential-like environment
-  variables (`*_API_KEY`, `*TOKEN*`, `*SECRET*`...) removed.
+  variables (`*_API_KEY`, `*TOKEN*`, `*SECRET*`...) removed. `!command` in the chat is
+  the exception: it runs what *you* type in your shell, and refuses `sudo`.
 - **Not as root.** If apex runs as root or an elevated Administrator, command execution
   is disabled.
-- **Secrets.** Keys stay out of config files, logs, history, and error messages; known
-  token formats are redacted from tool output before it reaches the model.
-- **Untrusted content.** File contents and command output are treated as data. The
-  model is told so, but **prompt injection is not solved**: a malicious file can still
-  persuade the model to *propose* harmful actions. Your approval is the safeguard, so
-  read what you approve.
+- **Secrets.** Keys stay out of config files, logs, history, memory, and error messages;
+  known token formats are redacted from tool output before it reaches the model.
+- **Untrusted content.** File contents and command output are treated as data. Project
+  instruction files, `SOUL.md`, and memory entries are scanned for prompt-injection
+  patterns, but **prompt injection is not solved**: a malicious file can still persuade
+  the model to *propose* harmful actions. Your approval is the safeguard, so read what
+  you approve, and be careful with `/auto` in repositories you do not trust.
 
 **This is not a sandbox.** An approved command runs with your full user permissions, and
 running a project's tests runs that project's code. For untrusted repositories, use
@@ -355,16 +446,17 @@ running a project's tests runs that project's code. For untrusted repositories, 
 
 ## API costs
 
-- Every model call is billed by your provider. In `task` and `chat`, each tool step is
-  another call that resends the conversation so far, so long tasks cost more.
-  `agent.max_steps` (default 12) caps the calls per turn.
-- Token counts are shown after `ask` and `task`, and by `/usage` in chat, whenever the
-  provider reports them.
+- Every model call is billed by your provider. Each tool step is another call that
+  resends the conversation so far, so long tasks and long chats cost more.
+  `agent.max_steps` (default 12) caps the calls per turn, and `/compress` shrinks a long
+  chat.
+- Token counts are shown after each chat answer, after `ask` and `task`, and by `/usage`,
+  whenever the provider reports them.
 - APEX CORE ships no price list, because prices change. Add `pricing` to a provider
   (see [Configuration](#configuration)) to see an estimate. Treat it as an estimate;
   your provider's billing page is authoritative.
-- `apex models` and `apex doctor --online` make a model-listing request, which providers
-  normally do not charge for.
+- `apex models`, `apex doctor --online`, and the key check in `apex setup` make a
+  model-listing request, which providers normally do not charge for.
 - Ollama and LM Studio run on your machine and have no per-token cost.
 - The automated tests never contact a paid API.
 
@@ -373,26 +465,34 @@ running a project's tests runs that project's code. For untrusted repositories, 
 - No telemetry, analytics, update checks, or background processes.
 - Conversations and task logs are stored only in your local SQLite file.
   `apex history delete <id>` and `apex history clear` remove them; deleted data is
-  overwritten (`secure_delete`), and `clear` also compacts the file. Set
-  `history.enabled = false` or pass `--no-history` to store nothing.
-- What leaves your machine: your messages, plus any file contents and command output
-  the agent reads, are sent to the provider you configured. With a local provider
-  (Ollama, LM Studio) nothing leaves your machine.
+  overwritten (`secure_delete`), and `clear` also compacts the file and deletes the
+  typed-input history. Set `history.enabled = false` or pass `--no-history` to store
+  nothing.
+- Memory notes are plain files in the data directory (`apex memory path`). They are part
+  of the instructions sent to your provider in every conversation.
+- Typed chat input is kept for the up-arrow in a private file with known secrets masked;
+  `history.save_input = false` turns it off.
+- What leaves your machine: your messages, your memory notes and project instruction
+  files, plus any file contents and command output the agent reads, are sent to the
+  provider you configured. With a local provider (Ollama, LM Studio) nothing leaves
+  your machine.
 - The history file is not encrypted. On Linux and macOS it is readable only by you.
 
 ## Troubleshooting
 
 | Problem | What to do |
 |---|---|
-| `apex: command not found` | Run `pipx ensurepath` and open a new terminal. On Windows, check that `%USERPROFILE%\.local\bin` is on `PATH`. |
-| `No API key found` | Set the variable `apex doctor` names, in the same shell you run apex from. On Windows, open a new window after `setx`. |
-| `authentication failed (HTTP 401)` | The key is wrong or revoked. `apex doctor` shows where it was loaded from. |
-| `model not found` | `apex models` lists what your key can use; then `apex config set providers.<name>.model <id>`. |
+| `apex: command not found` | Open a new terminal after installing. Check that `~/.local/bin` is on `PATH` (fish: `fish_add_path ~/.local/bin`). On Windows, check `%LOCALAPPDATA%\apex-core\bin`; with pipx, run `pipx ensurepath`. |
+| pipx: `No module named 'filelock'` | The system pipx is broken: `sudo pacman -S python-filelock`, or use `scripts/install.sh`. |
+| `No API key found` | Run `apex setup` and paste the key, or set the variable `apex doctor` names in the same shell you run apex from. On Windows, open a new window after `setx`. |
+| `authentication failed (HTTP 401)` | The key is wrong or revoked. `apex doctor` shows where it was loaded from; `apex setup` replaces it. |
+| `model not found` | `/model` in the chat, or `apex model`, lists what your key can use. |
 | `rate limited` / `quota or credit exhausted` | apex retries rate limits automatically; quota errors mean checking the provider's billing settings. |
 | `could not connect` | Check your network. For Ollama or LM Studio, make sure the server is running. Behind a proxy, set `HTTPS_PROXY`; for a custom CA, set `SSL_CERT_FILE`. |
 | `request rejected` mentioning tools | The model does not support tool calling: use `--no-tools`, or `apex config set providers.<name>.supports_tools false`. |
 | Garbled or duplicated streaming output | `apex config set providers.<name>.stream false`. |
-| Odd characters on Windows | Use Windows Terminal, or run `chcp 65001` in Command Prompt. |
+| Arrow keys or the bottom bar misbehave | Set `APEX_SIMPLE_INPUT=1` to use plain line input. |
+| Odd characters on Windows | Use Windows Terminal, or run `chcp 65001` in Command Prompt. `apex config set ui.emoji false` removes emoji. |
 | Keyring prompts or hangs (headless Linux) | Set `APEX_NO_KEYRING=1` and use an environment variable or `--env-file`. |
 | "command execution is disabled" | apex is running as root or an elevated Administrator. Run it as your normal user. |
 | Edits or commands are always refused | You are not in an interactive terminal, `--read-only` is set, or `permissions.write/execute = "deny"`. |
@@ -410,12 +510,12 @@ CI runs the full test suite on every push (see
 | Windows x86_64 (`windows-latest`) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test (PowerShell) |
 | Arch Linux / CachyOS | 3.11+ | Expected to work like any Linux (pure Python, no distro-specific code); not run in CI. |
 
-Last full verification, 2026-10-24: all 18 CI jobs passed on macOS 26.6 (arm64),
-macOS 15.7 (Intel), Windows Server 2025 (build 26100, default cp1252 encoding), and
-Ubuntu (Linux 7.0, glibc 2.43). That covers 282 to 286 tests per job; the skipped tests
-apply only to the other operating systems. On every platform this included a real
-Ctrl+C (Ctrl+Break on Windows) interrupting a hung request, process-tree kills,
-symlink-escape checks, and the git fsmonitor protection.
+Last full verification, 2026-10-24, of version 0.1.0rc1 (commit `d2f6a72`): all 18 CI
+jobs passed on macOS 26.6 (arm64), macOS 15.7 (Intel), Windows Server 2025 (build
+26100, default cp1252 encoding), and Ubuntu (Linux 7.0, glibc 2.43). That covers 282 to
+286 tests per job; the skipped tests apply only to the other operating systems. On every
+platform this included a real Ctrl+C (Ctrl+Break on Windows) interrupting a hung
+request, process-tree kills, symlink-escape checks, and the git fsmonitor protection.
 
 Results for the current commit are on the repository's
 [Actions page](https://github.com/oliverhyar12-coder/Apex-Core/actions). Not covered by
@@ -432,9 +532,12 @@ mocked and local fake servers, not against the live services.
   endpoints), no image or file attachments, and no extended "thinking" output.
 - Tools: no file deletion or rename tool, no web access, no multi-file patch tool.
 - Command execution is approval-gated but **not sandboxed** (see SECURITY.md).
-- Chat input is single-line; Markdown in answers is shown as plain text.
-- Token budgets per task and context-window trimming for very long chats are not
-  implemented yet; `agent.max_steps` is the main cost control.
+- Long chats are compressed only when you run `/compress`; there is no automatic
+  compression or per-task token budget yet. `agent.max_steps` is the main cost control.
+- Memory is small by design (about 2,200 characters of notes and 1,375 about you), and
+  past conversations are not searchable by the agent.
+- Compared with Hermes Agent, there are no messaging gateways, skills, scheduled jobs,
+  or subagents: APEX CORE is a terminal program only.
 - The history database is not encrypted.
 
 ## Development

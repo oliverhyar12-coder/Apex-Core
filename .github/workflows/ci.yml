@@ -80,6 +80,117 @@ jobs:
       - run: python -m pip list
       - run: python -m pytest -q -ra
 
+  installer:
+    name: Installer script (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      APEX_CONFIG_DIR: ${{ github.workspace }}/.ci-apex/config
+      APEX_DATA_DIR: ${{ github.workspace }}/.ci-apex/data
+      APEX_NO_KEYRING: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      # Linux / macOS: scripts/install.sh
+      - name: install.sh
+        if: runner.os != 'Windows'
+        run: bash scripts/install.sh
+      - name: Run the installed apex
+        if: runner.os != 'Windows'
+        run: ~/.local/bin/apex --version
+      - name: Configure and check it
+        if: runner.os != 'Windows'
+        run: ~/.local/bin/apex init --provider ollama --model ci-model
+      - name: apex doctor
+        if: runner.os != 'Windows'
+        run: ~/.local/bin/apex doctor
+      - name: install.sh again (update)
+        if: runner.os != 'Windows'
+        run: bash scripts/install.sh
+      - name: install.sh --uninstall
+        if: runner.os != 'Windows'
+        run: bash scripts/install.sh --uninstall
+      - name: Check it is gone
+        if: runner.os != 'Windows'
+        run: test ! -e ~/.local/bin/apex
+      # Windows: scripts/install.ps1 under Windows PowerShell 5.1 and PowerShell 7
+      - name: install.ps1 (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install.ps1
+      - name: Run the installed apex
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& "$env:LOCALAPPDATA\apex-core\bin\apex.exe" --version'
+      - name: Configure it
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& "$env:LOCALAPPDATA\apex-core\bin\apex.exe" init --provider ollama --model ci-model'
+      - name: apex doctor
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: '& "$env:LOCALAPPDATA\apex-core\bin\apex.exe" doctor'
+      - name: install.ps1 again (PowerShell 7, update)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/install.ps1
+      - name: install.ps1 through Invoke-Expression, like `irm ... | iex` (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $env:APEX_SOURCE = (Get-Location).Path
+          Get-Content -Raw scripts\install.ps1 | Invoke-Expression
+          if (Get-Variable -Name venvPython -ErrorAction SilentlyContinue) { throw "the installer left variables in the session" }
+          & "$env:LOCALAPPDATA\apex-core\bin\apex.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "apex --version failed" }
+      - name: User PATH contains the apex folder
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+          if (-not (($userPath -split ";") -contains "$env:LOCALAPPDATA\apex-core\bin")) { throw "PATH not updated: $userPath" }
+      - name: install.ps1 -Uninstall
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/install.ps1 -Uninstall
+      - name: Check it is gone
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: if (Test-Path "$env:LOCALAPPDATA\apex-core\bin\apex.exe") { throw "still installed" }
+
+  arch:
+    # The closest CI gets to CachyOS: Arch Linux with pacman's Python, run as a
+    # normal user whose login shell is fish.
+    name: Arch Linux (pacman Python, fish)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    timeout-minutes: 25
+    steps:
+      - name: Install Python, git, and fish with pacman
+        run: pacman -Syu --noconfirm --needed python git fish
+      - uses: actions/checkout@v5
+      - name: Create an unprivileged user with fish as the login shell
+        run: |
+          useradd --create-home --shell /usr/bin/fish tester
+          cp -r "$GITHUB_WORKSPACE" /home/tester/src
+          chown -R tester:tester /home/tester/src
+      - name: Show versions
+        run: runuser -u tester -- bash -c 'grep PRETTY_NAME /etc/os-release; python --version; fish --version'
+      - name: Run the tests with pacman's Python
+        run: runuser -u tester -- env HOME=/home/tester bash -c 'cd ~/src && python -m venv ~/testenv && ~/testenv/bin/python -m pip install -q -e ".[dev]" && ~/testenv/bin/python -m pytest -q -ra'
+      - name: install.sh from fish (as CachyOS users run it)
+        run: runuser -u tester -- env HOME=/home/tester SHELL=/usr/bin/fish PATH=/usr/local/bin:/usr/bin fish -c 'bash ~/src/scripts/install.sh'
+      - name: A new fish session finds apex
+        run: runuser -u tester -- env HOME=/home/tester PATH=/usr/local/bin:/usr/bin fish -c 'apex --version; and apex init --provider ollama --model ci-model; and apex doctor'
+      - name: install.sh --uninstall
+        run: runuser -u tester -- env HOME=/home/tester PATH=/usr/local/bin:/usr/bin fish -c 'bash ~/src/scripts/install.sh --uninstall; and test ! -e ~/.local/bin/apex'
+
   package:
     name: Build and install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

@@ -23,6 +23,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from apexcore.config import PermissionSettings, ToolSettings
 from apexcore.errors import ToolError
+from apexcore.memory import MemoryStore
 from apexcore.providers.base import ToolSpec
 from apexcore.redaction import GLOBAL_REDACTOR, Redactor
 from apexcore.tools.workspace import Workspace
@@ -32,6 +33,8 @@ class Risk(enum.StrEnum):
     READ = "read"
     WRITE = "write"
     EXECUTE = "execute"
+    # Writes to APEX CORE's own memory files (never the workspace).
+    MEMORY = "memory"
 
 
 class ToolArgs(BaseModel):
@@ -42,6 +45,15 @@ class ToolArgs(BaseModel):
 class ToolResult:
     content: str
     ok: bool = True
+    # Optional short text shown to the user (not the model), such as a plan
+    # checklist or the last lines of a command's output.
+    display: str = ""
+
+
+@dataclass
+class TodoItem:
+    content: str
+    status: str = "pending"  # pending | in_progress | completed
 
 
 @dataclass
@@ -52,6 +64,10 @@ class ToolContext:
     redactor: Redactor = field(default_factory=lambda: GLOBAL_REDACTOR)
     # Secret values to strip from child-process environments (provider keys).
     secret_env_names: frozenset[str] = frozenset()
+    # Persistent memory (None when memory is disabled).
+    memory: MemoryStore | None = None
+    # The session's current plan, maintained by the todo tool.
+    todos: list[TodoItem] = field(default_factory=list)
 
 
 @dataclass

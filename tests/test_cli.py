@@ -90,9 +90,16 @@ def test_version() -> None:
         assert result.exit_code == 0 and __version__ in result.stdout
 
 
-def test_no_arguments_shows_help_with_usage_exit_code() -> None:
+def test_no_arguments_without_terminal_shows_help() -> None:
+    # In a real terminal `apex` opens the chat; in a pipe it prints help.
     result = apex()
-    assert result.exit_code == 2 and "Usage" in result.output
+    assert result.exit_code == 0 and "Usage" in result.output and "--continue" in result.output
+
+
+def test_chat_options_belong_to_chat() -> None:
+    result = apex("--model", "x", "tools")
+    assert result.exit_code == 2 and "go after the command name" in result.output
+    assert "apex tools --help" in result.output
 
 
 def test_unknown_command_is_usage_error() -> None:
@@ -406,6 +413,27 @@ def test_task_without_terminal_refuses_writes(
     assert "write_file" not in offered and "read_file" in offered
 
 
+def test_task_auto_without_terminal_still_refuses(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    script = [
+        {"tool_calls": [("write_file", {"path": "hello.py", "content": "print('hi')\n"})]},
+        {"tool_calls": [("run_command", {"argv": ["python", "--version"]})]},
+        {"content": "Done."},
+    ]
+    with FakeOpenAIServer(script) as server:
+        configure_local(server, monkeypatch)
+        monkeypatch.chdir(project)
+        result = apex("task", "--auto", "create hello.py")
+    assert result.exit_code == 0, result.output
+    assert not (project / "hello.py").exists()
+    assert "--auto needs a terminal" in result.output
+    offered = {t["function"]["name"] for t in server.requests[0]["tools"]}
+    assert not offered & {"write_file", "edit_file", "run_command"}
+
+
 def test_task_read_only_and_max_steps(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     script = [{"tool_calls": [("list_files", {})]}] * 2
     with FakeOpenAIServer(script) as server:
@@ -443,9 +471,32 @@ def test_chat_resume(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
         [conversation] = HistoryStore().list_conversations()
         result = apex("chat", "--no-tools", "--resume", conversation.id, input="two\n")
     assert result.exit_code == 0, result.output
-    assert "Resumed conversation" in result.stdout
+    assert "Resumed 'one' (2 messages)" in result.stdout
     contents = [m["content"] for m in server.requests[1]["messages"]]
     assert contents[1:] == ["one", "first", "two"]
+
+
+def test_chat_continue_picks_latest_for_this_workspace(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    with FakeOpenAIServer([{"content": "a"}, {"content": "b"}, {"content": "c"}]) as server:
+        configure_local(server, monkeypatch)
+        monkeypatch.chdir(tmp_path)
+        apex("chat", input="older\n/exit\n")
+        apex("chat", input="newer\n/exit\n")
+        result = apex("chat", "-c", input="again\n/exit\n")
+    assert result.exit_code == 0, result.output
+    assert "Resumed 'newer'" in result.stdout
+    contents = [m["content"] for m in server.requests[2]["messages"]]
+    assert contents[1:] == ["newer", "b", "again"]
+
+
+def test_continue_without_history_starts_fresh(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    with FakeOpenAIServer([{"content": "a"}]) as server:
+        configure_local(server, monkeypatch)
+        monkeypatch.chdir(tmp_path)
+        result = apex("chat", "-c", input="hi\n/exit\n")
+    assert "No earlier chat to continue" in result.stdout and result.exit_code == 0
 
 
 def test_history_clear(monkeypatch: pytest.MonkeyPatch) -> None:

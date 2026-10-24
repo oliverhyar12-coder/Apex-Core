@@ -10,6 +10,7 @@ from rich.text import Text
 
 from apexcore import paths
 from apexcore.cli.common import guard
+from apexcore.cli.prompt_input import clear_input_history
 from apexcore.cli.ui import sanitize, stdout_console
 from apexcore.history import HistoryStore
 
@@ -126,8 +127,9 @@ def delete(
 def clear(
     yes: Annotated[bool, typer.Option("--yes", "-y", help="Do not ask for confirmation")] = False,
 ) -> None:
-    """Permanently delete ALL local history."""
+    """Permanently delete ALL local history (conversations and typed-input history)."""
     if not yes and not typer.confirm(f"Delete all history in {paths.history_db()}?"):
         raise typer.Exit(1)
     count = HistoryStore().clear()
+    clear_input_history()
     stdout_console().print(Text(f"Deleted {count} conversations.", style="green"))

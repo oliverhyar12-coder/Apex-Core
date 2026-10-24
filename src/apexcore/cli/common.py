@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import functools
+import os
+import shlex
+import subprocess
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, TypeVar
 
 import typer
 
 from apexcore.cli.ui import print_error, stderr_console
-from apexcore.errors import ApexError
+from apexcore.errors import ApexError, ConfigError
+from apexcore.platform_utils import IS_WINDOWS, which_no_cwd
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -36,3 +41,23 @@ def guard(func: F) -> F:
             raise typer.Exit(EXIT_INTERRUPTED) from None
 
     return wrapper  # type: ignore[return-value]
+
+
+def open_in_editor(path: Path) -> None:
+    """Open ``path`` in $VISUAL / $EDITOR (Notepad on Windows, else nano/vim/vi)."""
+    editor = os.environ.get("VISUAL") or os.environ.get("EDITOR")
+    if editor:
+        argv = [*shlex.split(editor, posix=not IS_WINDOWS), str(path)]
+    elif IS_WINDOWS:
+        argv = ["notepad.exe", str(path)]
+    else:
+        found = next(
+            (which_no_cwd(name) for name in ("nano", "vim", "vi") if which_no_cwd(name)), None
+        )
+        if found is None:
+            raise ConfigError("No text editor found.", hint="Set the EDITOR environment variable.")
+        argv = [str(found), str(path)]
+    try:
+        subprocess.run(argv, check=False)
+    except OSError as exc:
+        raise ConfigError(f"Could not start the editor {argv[0]!r}: {exc}") from exc

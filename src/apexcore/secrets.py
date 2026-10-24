@@ -104,13 +104,20 @@ def describe_source(lookup: KeyLookup, api_key_env: str | None) -> str:
     return "not found"
 
 
+# How to add the optional keyring package, for either way of installing.
+KEYRING_INSTALL_HINT = (
+    "rerun the installer with --with-keyring (-WithKeyring on Windows), "
+    "or: pipx inject apex-core-cli keyring"
+)
+
+
 def store_in_keyring(provider_name: str, value: str) -> None:
     module = _keyring()
     if module is None or not keyring_available():
         raise ConfigError(
             "No usable OS keyring.",
-            hint="Install the optional extra (pipx inject apex-core-cli keyring) or "
-            "use --env-file / an environment variable instead.",
+            hint=f"To add keyring support, {KEYRING_INSTALL_HINT}. Or use --env-file "
+            "or an environment variable instead.",
         )
     try:
         module.set_password(KEYRING_SERVICE, provider_name, value)

@@ -6,6 +6,66 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0rc1] - not yet released
+
+Second release candidate: a chat that works like a coding partner, modelled on Hermes
+Agent, plus installers that do not need pipx. Not published to PyPI.
+
+### Added
+
+- Running `apex` with no command opens the chat; the first run starts a setup wizard
+  (choose a provider, paste the API key with hidden input, check it by listing models,
+  pick a model). New `apex setup` and `apex model` commands.
+- Chat input with prompt_toolkit: Enter sends; Alt+Enter, Ctrl+J, or a trailing `\`
+  adds a line; Up/Down recall earlier messages (stored privately, with secrets masked);
+  `/` completes commands with descriptions; a status bar shows the model, tokens, cost,
+  context size, and mode. `APEX_SIMPLE_INPUT=1` falls back to plain input.
+- Answers stream as rendered Markdown. A feed shows each tool as it runs, with an icon,
+  timing, and the end of command output, and each turn ends with a one-line summary.
+- Slash commands `/new`, `/model` (a picker, or `provider:name`), `/retry`, `/undo`,
+  `/compress`, `/plan`, `/memory`, `/personality`, `/auto`, `/title`, `/sessions`, and
+  `/resume`, and `!command` to run a shell command yourself.
+- Approval scopes: allow once, for the session, or always (exact commands only, saved
+  to the new `permissions.always_allowed_commands`), deny, or type feedback for the
+  agent. Auto mode (`/auto`, `--auto`) approves edits and ordinary commands.
+- `todo` tool: the agent keeps a visible plan for multi-step work.
+- Long-term memory: the `memory` tool, two size-limited files (`MEMORY.md`, `USER.md`),
+  `apex memory show|edit|clear|path`, and `memory.enabled` / `permissions.memory`.
+- Project instructions from `APEX.md`, `AGENTS.md`, `CLAUDE.md`, or `.cursorrules` at
+  the workspace root; a `SOUL.md` persona; built-in and custom personalities.
+- Sessions: `apex -c/--continue`, `apex -r/--resume ID-OR-TITLE`, and titles.
+- `scripts/install.sh` (Linux, macOS) and `scripts/install.ps1` (Windows): a private
+  virtual environment, the `apex` command on PATH (bash, zsh, fish, Windows user PATH),
+  update by re-running, and `--uninstall`.
+- CI runs both installers on Linux, macOS, and Windows (PowerShell 5.1 and 7), and the
+  tests plus the installer in an Arch Linux container with fish.
+- [docs/USAGE.md](docs/USAGE.md), a guide to chatting and everyday use.
+- Settings `agent.personality`, `agent.personalities`, `agent.context_files`,
+  `history.save_input`, `ui.markdown`, and `ui.emoji`.
+
+### Changed
+
+- `apex` without a command opens the chat in an interactive terminal; elsewhere it
+  still prints help. Chat options placed before another command
+  (`apex --model x ask ...`) are a usage error that says where they go.
+- Approval answers are `o` (once), `s` (session), `a` (always, saved), `d` (deny).
+  **`a` used to mean "for this session"; it now saves the approval for later chats.**
+  `y` still means once. Options that are not offered for an action ask again instead
+  of being sent to the model as feedback.
+- Ctrl+C on an empty chat prompt asks for a second press before leaving.
+- `apex init` without flags runs the setup wizard in an interactive terminal.
+- `apex history clear` also deletes the typed-input history.
+- New dependency: `prompt_toolkit`.
+
+### Security
+
+- Project instruction files, `SOUL.md`, and memory entries are scanned for
+  prompt-injection patterns (invisible characters, instruction overrides, hidden HTML
+  comments, pipe-to-shell commands, credential exfiltration). Suspicious project files
+  are not loaded; suspicious memory entries and secrets are refused.
+- Auto mode never covers flagged commands, and without an interactive terminal it
+  approves nothing.
+
 ## [0.1.0rc1] - not yet released
 
 First release candidate of APEX CORE, the terminal AI agent. Not published to PyPI.

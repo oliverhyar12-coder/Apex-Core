@@ -167,7 +167,8 @@ class HistoryStore:
             )
         return conversation_id
 
-    def add_message(self, conversation_id: str, message: Message) -> None:
+    def add_message(self, conversation_id: str, message: Message) -> int:
+        """Store a message and return its row id."""
         tool_calls = (
             json.dumps([call.to_dict() for call in message.tool_calls])
             if message.tool_calls
@@ -175,7 +176,7 @@ class HistoryStore:
         )
         now = _now()
         with self._connect() as conn:
-            conn.execute(
+            cursor = conn.execute(
                 "INSERT INTO messages (conversation_id, role, content, tool_calls, "
                 "tool_call_id, name, is_error, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                 (
@@ -192,6 +193,55 @@ class HistoryStore:
             conn.execute(
                 "UPDATE conversations SET updated_at = ? WHERE id = ?", (now, conversation_id)
             )
+            return int(cursor.lastrowid or 0)
+
+    def delete_messages(self, message_ids: list[int]) -> None:
+        """Remove messages (used by /undo and /retry)."""
+        if not message_ids:
+            return
+        with self._connect() as conn:
+            conn.executemany("DELETE FROM messages WHERE id = ?", [(i,) for i in message_ids])
+
+    def rename(self, conversation_id: str, title: str) -> str:
+        title = self.redactor.redact(" ".join(title.split()))[:120]
+        if not title:
+            raise HistoryError("The title is empty.")
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE conversations SET title = ? WHERE id = ?", (title, conversation_id)
+            )
+        return title
+
+    def latest(
+        self, kind: str = "chat", workspace: str | None = None
+    ) -> ConversationSummary | None:
+        """The most recently updated conversation, preferring this workspace."""
+        candidates = self.list_conversations(limit=200, kind=kind)
+        if workspace is not None:
+            for summary in candidates:
+                if summary.workspace == workspace and summary.message_count:
+                    return summary
+        return next((c for c in candidates if c.message_count), None)
+
+    def resolve_ref(self, ref: str) -> str:
+        """An id prefix or a title (exact, then unique prefix; case-insensitive)."""
+        ref = ref.strip()
+        if ref and all(c in "0123456789abcdef" for c in ref.lower()):
+            with contextlib.suppress(HistoryError):
+                return self.resolve_id(ref)
+        lowered = ref.lower()
+        titles = self.list_conversations(limit=1000)
+        exact = [c for c in titles if c.title.lower() == lowered]
+        if exact:
+            return exact[0].id
+        prefixed = [c for c in titles if c.title.lower().startswith(lowered)]
+        if len(prefixed) == 1:
+            return prefixed[0].id
+        if len(prefixed) > 1:
+            raise HistoryError(f"{ref!r} matches several conversations; use the id.")
+        raise HistoryError(
+            f"No conversation with id or title {ref!r}.", hint="Run `apex history` to list them."
+        )
 
     def add_action(self, conversation_id: str, tool: str, summary: str, status: str) -> None:
         with self._connect() as conn:
@@ -276,25 +326,31 @@ class HistoryStore:
         return _summary(row)
 
     def get_messages(self, conversation_id: str) -> list[Message]:
+        return [message for _, message in self.get_messages_with_ids(conversation_id)]
+
+    def get_messages_with_ids(self, conversation_id: str) -> list[tuple[int, Message]]:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM messages WHERE conversation_id = ? ORDER BY id",
                 (conversation_id,),
             ).fetchall()
-        messages = []
+        messages: list[tuple[int, Message]] = []
         for row in rows:
             calls = []
             if row["tool_calls"]:
                 with contextlib.suppress(ValueError, TypeError):
                     calls = [ToolCall.from_dict(item) for item in json.loads(row["tool_calls"])]
             messages.append(
-                Message(
-                    role=row["role"],
-                    content=row["content"],
-                    tool_calls=calls,
-                    tool_call_id=row["tool_call_id"],
-                    name=row["name"],
-                    is_error=bool(row["is_error"]),
+                (
+                    int(row["id"]),
+                    Message(
+                        role=row["role"],
+                        content=row["content"],
+                        tool_calls=calls,
+                        tool_call_id=row["tool_call_id"],
+                        name=row["name"],
+                        is_error=bool(row["is_error"]),
+                    ),
                 )
             )
         return messages

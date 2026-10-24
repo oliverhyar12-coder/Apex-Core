@@ -103,6 +103,11 @@ class ProviderConfig(_Strict):
 
 class AgentSettings(_Strict):
     max_steps: int = Field(default=12, ge=1, le=100)
+    # Personality overlay: a built-in name (see `/personality`) or one of `personalities`.
+    personality: str | None = None
+    personalities: dict[str, str] = Field(default_factory=dict)
+    # Load APEX.md / AGENTS.md / CLAUDE.md / .cursorrules from the workspace root.
+    context_files: bool = True
 
 
 class PermissionSettings(_Strict):
@@ -112,10 +117,16 @@ class PermissionSettings(_Strict):
     # intentionally no blanket "allow"; use auto_approve_commands for specific,
     # trusted argv prefixes such as ["git", "status"].
     execute: Literal["ask", "deny"] = "ask"
+    # The agent's own memory notes (never workspace files): allow, ask, or deny.
+    memory: Literal["allow", "ask", "deny"] = "allow"
+    # Argv prefixes that run without asking (["git", "status"] also covers
+    # "git status --short").
     auto_approve_commands: list[list[str]] = Field(default_factory=list)
+    # Exact commands you chose to allow "always" at the prompt (no prefix matching).
+    always_allowed_commands: list[list[str]] = Field(default_factory=list)
     allow_elevated: bool = False
 
-    @field_validator("auto_approve_commands")
+    @field_validator("auto_approve_commands", "always_allowed_commands")
     @classmethod
     def _check_prefixes(cls, value: list[list[str]]) -> list[list[str]]:
         for prefix in value:
@@ -134,6 +145,19 @@ class ToolSettings(_Strict):
 
 class HistorySettings(_Strict):
     enabled: bool = True
+    # Remember what you typed in chat (for the up-arrow), stored privately and redacted.
+    save_input: bool = True
+
+
+class MemorySettings(_Strict):
+    enabled: bool = True
+
+
+class UISettings(_Strict):
+    # Render answers as Markdown in interactive chat (pipes always get plain text).
+    markdown: bool = True
+    # Use emoji in the tool activity feed (plain symbols when off or unsupported).
+    emoji: bool = True
 
 
 class Settings(BaseSettings):
@@ -152,6 +176,8 @@ class Settings(BaseSettings):
     permissions: PermissionSettings = Field(default_factory=PermissionSettings)
     tools: ToolSettings = Field(default_factory=ToolSettings)
     history: HistorySettings = Field(default_factory=HistorySettings)
+    memory: MemorySettings = Field(default_factory=MemorySettings)
+    ui: UISettings = Field(default_factory=UISettings)
 
     @field_validator("providers")
     @classmethod

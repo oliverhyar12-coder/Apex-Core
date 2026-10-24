@@ -110,9 +110,92 @@ def test_session_remember() -> None:
 
 
 def test_build_tools_by_risk() -> None:
-    names = {t.name for t in build_tools({RegistryRisk.READ})}
-    assert names == {"list_files", "read_file", "search_files", "git_status", "git_diff"}
-    assert len(build_tools(set(Risk))) == 8
+    read_only = {"list_files", "read_file", "search_files", "git_status", "git_diff"}
+    names = {t.name for t in build_tools({RegistryRisk.READ}, session_tools=False)}
+    assert names == read_only  # what `apex ask --tools` offers
+    assert {t.name for t in build_tools({RegistryRisk.READ})} == read_only | {"todo"}
+    assert {t.name for t in build_tools({RegistryRisk.READ, RegistryRisk.MEMORY})} == (
+        read_only | {"todo", "memory"}
+    )
+    assert len(build_tools(set(Risk))) == 10
+
+
+def test_policy_memory_and_auto() -> None:
+    from apexcore.tools.memory_tool import MemoryTool
+
+    policy = PermissionPolicy(PermissionSettings())
+    assert policy.decide(MemoryTool(), action())[0] is Decision.ALLOW  # memory: allow by default
+    read_only = PermissionPolicy(PermissionSettings(), read_only=True)
+    assert read_only.decide(MemoryTool(), action())[0] is Decision.ALLOW  # not a workspace write
+    asked = PermissionPolicy(PermissionSettings(memory="ask"), interactive=False)
+    assert asked.decide(MemoryTool(), action())[0] is Decision.DENY
+    auto = PermissionPolicy(PermissionSettings(), auto=True)
+    assert auto.decide(WriteFileTool(), action())[0] is Decision.ALLOW
+    assert auto.decide(RunCommandTool(), action(["make", "test"]))[0] is Decision.ALLOW
+    # Flagged commands still ask in auto mode, and read-only still wins.
+    assert auto.decide(RunCommandTool(), action(["rm", "-rf", "x"], auto=False))[0] is Decision.ASK
+    both = PermissionPolicy(PermissionSettings(), auto=True, read_only=True)
+    assert both.decide(WriteFileTool(), action())[0] is Decision.DENY
+
+
+def test_auto_mode_needs_a_terminal() -> None:
+    from apexcore.tools.memory_tool import MemoryTool
+
+    headless = PermissionPolicy(PermissionSettings(memory="ask"), auto=True, interactive=False)
+    assert not headless.auto_active
+    assert headless.decide(WriteFileTool(), action())[0] is Decision.DENY
+    assert headless.decide(RunCommandTool(), action(["make", "test"]))[0] is Decision.DENY
+    assert headless.decide(MemoryTool(), action())[0] is Decision.DENY
+    # Explicit configuration still applies without a terminal.
+    allowed = PermissionPolicy(PermissionSettings(write="allow"), auto=True, interactive=False)
+    assert allowed.decide(WriteFileTool(), action())[0] is Decision.ALLOW
+
+
+def test_always_scope_calls_persistence_hook() -> None:
+    saved: list[list[str]] = []
+    policy = PermissionPolicy(PermissionSettings(), on_always=saved.append)
+    policy.remember(RunCommandTool(), action(["make", "test"]), "always")
+    policy.remember(RunCommandTool(), action(["make", "lint"]), "once")
+    policy.remember(RunCommandTool(), action(["rm", "-rf", "x"], auto=False), "always")
+    assert saved == [["make", "test"]]
+    assert policy.decide(RunCommandTool(), action(["make", "test"]))[0] is Decision.ALLOW
+    assert policy.decide(RunCommandTool(), action(["make", "lint"]))[0] is Decision.ASK
+
+
+def test_always_allowed_commands_match_exactly() -> None:
+    policy = PermissionPolicy(PermissionSettings(always_allowed_commands=[["make"]]))
+    assert policy.decide(RunCommandTool(), action(["make"]))[0] is Decision.ALLOW
+    # Unlike auto_approve_commands, a saved "always" is not a prefix.
+    assert policy.decide(RunCommandTool(), action(["make", "deploy"]))[0] is Decision.ASK
+    # Flagged commands are never auto-approved, even if listed.
+    flagged = PermissionPolicy(PermissionSettings(always_allowed_commands=[["rm", "x"]]))
+    assert flagged.decide(RunCommandTool(), action(["rm", "x"], auto=False))[0] is Decision.ASK
+
+
+def test_system_prompt_sections() -> None:
+    from apexcore.agent.prompts import PromptInputs
+    from apexcore.context import ContextFile
+
+    prompt = build_system_prompt(
+        PromptInputs(
+            tools=all_tools(),
+            workspace_root="/ws",
+            persona=ContextFile("SOUL.md", "You are Nova."),
+            memory_block="### About the user\nLikes tea",
+            project_context=ContextFile("AGENTS.md", "Use tabs."),
+            personality="concise",
+        )
+    )
+    assert prompt.startswith("You are Nova.")
+    assert "untrusted DATA" in prompt  # the safety rules survive any persona
+    assert "## Memory" in prompt and "Likes tea" in prompt
+    assert "## Project context (AGENTS.md)" in prompt and "Use tabs." in prompt
+    assert "## Personality" in prompt and "as few words as possible" in prompt
+    assert "todo tool" in prompt and "memory tool" in prompt
+    blocked = build_system_prompt(
+        PromptInputs(tools=[], project_context=ContextFile("AGENTS.md", "", True, ["deception"]))
+    )
+    assert "[BLOCKED: AGENTS.md contained potential prompt injection (deception)" in blocked
 
 
 def test_system_prompt_mentions_rules() -> None:

@@ -44,3 +44,5 @@ desktop.ini
 
 # Local development directories (see CONTRIBUTING.md)
 .dev/
+# CI scratch directories for the installer jobs
+.ci-apex/

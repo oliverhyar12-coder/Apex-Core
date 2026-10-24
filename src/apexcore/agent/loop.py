@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
@@ -30,7 +31,7 @@ from apexcore.permissions import (
 )
 from apexcore.platform_utils import call_interruptibly
 from apexcore.providers.base import ChatResponse, Message, Provider, ToolCall, ToolSpec, Usage
-from apexcore.tools.base import Tool, ToolContext, ToolResult, truncate
+from apexcore.tools.base import Risk, Tool, ToolContext, ToolResult, truncate
 from apexcore.tools.registry import known_tool_names
 
 TurnStatus = Literal["completed", "max_steps", "cancelled", "failed"]
@@ -43,6 +44,10 @@ class ActionRecord:
     summary: str
     status: ActionStatus
     detail: str = ""
+    # Seconds the tool ran for (None if it never ran).
+    duration: float | None = None
+    # Short text for the user (e.g. a plan checklist or a command's last lines).
+    display: str = ""
 
 
 @dataclass
@@ -61,6 +66,7 @@ class AgentUI(Protocol):
     def assistant_text(self, text: str) -> None: ...
     def assistant_done(self, message: Message) -> None: ...
     def tool_started(self, call: ToolCall, summary: str) -> None: ...
+    def tool_running(self, call: ToolCall, summary: str) -> None: ...
     def tool_finished(self, record: ActionRecord) -> None: ...
     def notice(self, text: str) -> None: ...
 
@@ -76,6 +82,9 @@ class NullUI:
         pass
 
     def tool_started(self, call: ToolCall, summary: str) -> None:
+        pass
+
+    def tool_running(self, call: ToolCall, summary: str) -> None:
         pass
 
     def tool_finished(self, record: ActionRecord) -> None:
@@ -272,6 +281,7 @@ class Agent:
                     details=action.details,
                     warnings=action.warnings,
                     can_remember=action.auto_approvable,
+                    can_always=tool.risk is Risk.EXECUTE and action.auto_approvable,
                 )
             )
             if not response.approved:
@@ -280,18 +290,30 @@ class Agent:
                 if response.feedback:
                     message += f" Their feedback: {response.feedback}"
                 return message + " Do not retry it unchanged.", False
-            if response.remember:
-                self.policy.remember(tool, action)
+            self.policy.remember(tool, action, response.scope)
+        self.ui.tool_running(call, action.summary)
+        started = time.monotonic()
         try:
             outcome: ToolResult = action.run()
         except ToolError as exc:
-            self._record(result, ActionRecord(tool.name, action.summary, "error", exc.message))
+            elapsed = time.monotonic() - started
+            record = ActionRecord(tool.name, action.summary, "error", exc.message, elapsed)
+            self._record(result, record)
             return f"Error: {exc.message}", False
         except OSError as exc:
+            elapsed = time.monotonic() - started
             detail = self.ctx.redactor.redact(f"{type(exc).__name__}: {exc}")
-            self._record(result, ActionRecord(tool.name, action.summary, "error", detail))
+            self._record(result, ActionRecord(tool.name, action.summary, "error", detail, elapsed))
             return f"Error: {detail}", False
         status: ActionStatus = "ok" if outcome.ok else "error"
         first_line = outcome.content.strip().splitlines()[0] if outcome.content.strip() else ""
-        self._record(result, ActionRecord(tool.name, action.summary, status, first_line[:200]))
+        record = ActionRecord(
+            tool.name,
+            action.summary,
+            status,
+            first_line[:200],
+            duration=time.monotonic() - started,
+            display=self.ctx.redactor.redact(outcome.display),
+        )
+        self._record(result, record)
         return self._limit(self.ctx.redactor.redact(outcome.content)), outcome.ok

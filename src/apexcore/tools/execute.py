@@ -33,6 +33,8 @@ from apexcore.tools.base import (
 from apexcore.tools.process import run_process, scrubbed_env
 
 MAX_TIMEOUT = 3600.0
+# Lines of command output shown to the user in the activity feed.
+DISPLAY_LINES = 6
 
 # Never run, even with approval.
 BLOCKED_PROGRAMS = frozenset(
@@ -248,7 +250,15 @@ class RunCommandTool(Tool):
                     body = truncate(ctx.redactor.redact(text.rstrip()), limit // 2, what=label)
                     parts.append(f"--- {label}{note} ---\n{body}")
             ok = not result.timed_out and result.returncode == 0
-            return ToolResult("\n".join(parts), ok=ok)
+            tail = [
+                line for line in (result.stdout + "\n" + result.stderr).splitlines() if line.strip()
+            ]
+            display = "\n".join(line[:200] for line in tail[-DISPLAY_LINES:])
+            if result.timed_out:
+                display = (display + "\n" if display else "") + f"timed out after {timeout:.0f}s"
+            elif result.returncode:
+                display = (display + "\n" if display else "") + f"exit code {result.returncode}"
+            return ToolResult("\n".join(parts), ok=ok, display=ctx.redactor.redact(display))
 
         return PreparedAction(
             summary=f"run {display}" + (f" (in {rel_cwd})" if rel_cwd != "." else ""),

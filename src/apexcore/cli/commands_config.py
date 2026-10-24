@@ -21,6 +21,7 @@ from apexcore.config import (
 from apexcore.errors import ConfigError
 from apexcore.providers.factory import provider_config
 from apexcore.secrets import (
+    KEYRING_INSTALL_HINT,
     delete_from_env_file,
     delete_from_keyring,
     describe_source,
@@ -144,8 +145,8 @@ def set_key(
     if not env_file and not keyring_available():
         raise ConfigError(
             "No usable OS keyring is available.",
-            hint="Install it with `pipx inject apex-core-cli keyring` (or pip install keyring), "
-            f"use --env-file to store the key in {paths.env_file()}, or set {cfg.api_key_env}.",
+            hint=f"To add it, {KEYRING_INSTALL_HINT}. Or use --env-file to store the key "
+            f"in {paths.env_file()}, or set {cfg.api_key_env}.",
         )
     if from_stdin:
         value = sys.stdin.readline().strip()

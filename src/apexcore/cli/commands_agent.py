@@ -1,4 +1,4 @@
-"""``apex chat``, ``apex ask``, ``apex task``, and ``apex tools``."""
+"""``apex`` / ``apex chat``, ``apex ask``, ``apex task``, and ``apex tools``."""
 
 from __future__ import annotations
 
@@ -96,19 +96,34 @@ def _report(result: TurnResult, session: AgentSession, *, show_actions: bool) ->
     return 0
 
 
-@guard
-def chat(
-    provider: ProviderOpt = None,
-    model: ModelOpt = None,
-    workspace: WorkspaceOpt = None,
-    no_tools: Annotated[bool, typer.Option("--no-tools", help="Plain chat without tools")] = False,
-    read_only: ReadOnlyOpt = False,
-    resume: Annotated[
-        str | None, typer.Option("--resume", "-r", help="Continue a saved chat by id")
-    ] = None,
-    no_history: NoHistoryOpt = False,
-) -> None:
-    """Start an interactive chat (with workspace tools unless --no-tools)."""
+ResumeOpt = Annotated[
+    str | None, typer.Option("--resume", "-r", help="Resume a saved chat by id or title")
+]
+ContinueOpt = Annotated[
+    bool, typer.Option("--continue", "-c", help="Continue your most recent chat here")
+]
+NoToolsOpt = Annotated[bool, typer.Option("--no-tools", help="Plain chat without tools")]
+AutoOpt = Annotated[
+    bool,
+    typer.Option(
+        "--auto", help="Approve edits and ordinary commands automatically (risky ones still ask)"
+    ),
+]
+
+
+def start_chat(
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+    workspace: Path | None = None,
+    no_tools: bool = False,
+    read_only: bool = False,
+    resume: str | None = None,
+    continue_last: bool = False,
+    no_history: bool = False,
+    auto: bool = False,
+) -> int:
+    """Open a session and run the interactive chat. Returns the exit code."""
     console = stdout_console()
     session = open_session(
         kind="chat",
@@ -119,24 +134,60 @@ def chat(
         read_only=read_only,
         no_history=no_history,
         approver=ConsoleApprover(console),
+        auto=auto,
     )
     try:
-        if resume:
+        if resume or continue_last:
             if session.store is None:
-                raise ConfigError("--resume needs history enabled.")
-            cid = session.store.resolve_id(resume)
-            session.load_history(cid)
-            console.print(
-                Text(
-                    f"Resumed conversation {cid} ({len(session.conversation) - 1} messages).",
-                    style="dim",
+                raise ConfigError("Resuming needs history enabled.")
+            if resume:
+                conversation_id = session.store.resolve_ref(resume)
+            else:
+                root = str(session.workspace.root) if session.workspace else str(Path.cwd())
+                latest = session.store.latest("chat", workspace=root)
+                conversation_id = latest.id if latest else None
+            if conversation_id is None:
+                console.print(Text("No earlier chat to continue; starting a new one.", style="dim"))
+            else:
+                session.load_history(conversation_id)
+                console.print(
+                    Text(
+                        f"Resumed {session.title!r} ({len(session.conversation) - 1} messages).",
+                        style="dim",
+                    )
                 )
-            )
         _warn_workspace(session)
-        code = ChatSession(session, console).run()
+        return ChatSession(session, console).run()
     finally:
         session.close()
-    raise typer.Exit(code)
+
+
+@guard
+def chat(
+    provider: ProviderOpt = None,
+    model: ModelOpt = None,
+    workspace: WorkspaceOpt = None,
+    no_tools: NoToolsOpt = False,
+    read_only: ReadOnlyOpt = False,
+    resume: ResumeOpt = None,
+    continue_last: ContinueOpt = False,
+    no_history: NoHistoryOpt = False,
+    auto: AutoOpt = False,
+) -> None:
+    """Start an interactive chat (the same as running `apex` with no command)."""
+    raise typer.Exit(
+        start_chat(
+            provider=provider,
+            model=model,
+            workspace=workspace,
+            no_tools=no_tools,
+            read_only=read_only,
+            resume=resume,
+            continue_last=continue_last,
+            no_history=no_history,
+            auto=auto,
+        )
+    )
 
 
 @guard
@@ -186,6 +237,7 @@ def task(
         int | None, typer.Option("--max-steps", min=1, max=100, help="Override agent.max_steps")
     ] = None,
     no_history: NoHistoryOpt = False,
+    auto: AutoOpt = False,
 ) -> None:
     """Run an agent task in the workspace. Edits and commands ask for approval."""
     console = stdout_console()
@@ -202,6 +254,7 @@ def task(
         no_history=no_history,
         approver=ConsoleApprover(console),
         settings=settings,
+        auto=auto,
     )
     ui = ConsoleUI(console)
     try:
@@ -214,7 +267,8 @@ def task(
             console.print(
                 Text(
                     "Note: no interactive terminal, so edits and commands that "
-                    "need approval will be refused.",
+                    "need approval will be refused"
+                    + (" (--auto needs a terminal too)." if auto else "."),
                     style="yellow",
                 )
             )
@@ -250,5 +304,9 @@ def tools() -> None:
     if prefixes:
         shown = ", ".join(" ".join(p) for p in prefixes)
         notes.append(f"auto-approved command prefixes: {shown}")
+    exact = settings.permissions.always_allowed_commands
+    if exact:
+        shown = ", ".join(" ".join(c) for c in exact)
+        notes.append(f"always-allowed commands (exact): {shown}")
     for note in notes:
         console.print(Text(note, style="dim"))

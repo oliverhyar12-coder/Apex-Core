@@ -39,6 +39,7 @@ dependencies = [
     "platformdirs>=4.2",
     "tomli-w>=1.0",
     "python-dotenv>=1.0",
+    "prompt_toolkit>=3.0.43",
 ]
 
 [project.optional-dependencies]

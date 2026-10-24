@@ -1,27 +1,32 @@
-"""``apex init`` and ``apex doctor``."""
+"""``apex setup``, ``apex model``, ``apex init`` and ``apex doctor``."""
 
 from __future__ import annotations
 
 import locale
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
 from apexcore import DIST_NAME, __version__, paths
 from apexcore.cli.common import EXIT_USAGE, guard
+from apexcore.cli.pickers import chat_models, pick
 from apexcore.cli.session import stdin_is_interactive
 from apexcore.cli.ui import stdout_console
 from apexcore.config import (
     PROVIDER_NAME_RE,
+    ProviderConfig,
     load_settings,
     read_config_file,
     write_config_file,
 )
-from apexcore.errors import ApexError, ConfigError
+from apexcore.errors import ApexError, AuthenticationError, ConfigError
 from apexcore.history import HistoryStore
 from apexcore.platform_utils import (
     IS_WINDOWS,
@@ -30,9 +35,18 @@ from apexcore.platform_utils import (
     is_elevated,
     which_no_cwd,
 )
+from apexcore.providers.base import ModelInfo
 from apexcore.providers.factory import create_provider, provider_config
 from apexcore.providers.presets import ADAPTERS, OPENAI_COMPATIBLE, PRESETS, get_preset
-from apexcore.secrets import describe_source, keyring_available, lookup_api_key
+from apexcore.redaction import GLOBAL_REDACTOR
+from apexcore.secrets import (
+    KEYRING_INSTALL_HINT,
+    describe_source,
+    keyring_available,
+    lookup_api_key,
+    store_in_env_file,
+    store_in_keyring,
+)
 
 
 def key_instructions(env_name: str, provider: str) -> list[str]:
@@ -54,54 +68,196 @@ def key_instructions(env_name: str, provider: str) -> list[str]:
     return lines
 
 
-def _choose_interactively(defaults: dict[str, Any]) -> dict[str, Any]:
-    console = stdout_console()
-    table = Table(title="Providers", title_justify="left", show_lines=False)
-    table.add_column("#", justify="right")
-    table.add_column("name")
-    table.add_column("description")
-    names = list(PRESETS)
-    for number, name in enumerate(names, 1):
-        preset = PRESETS[name]
-        table.add_row(
-            str(number), name, preset.label + (f" - {preset.notes}" if preset.notes else "")
-        )
-    table.add_row(
-        str(len(names) + 1), "custom", "Any other OpenAI-compatible or Anthropic endpoint"
+Ask = Callable[[str], str]
+
+
+def _ask(prompt: str) -> str:
+    return typer.prompt(prompt.rstrip(": "), default="", show_default=False, prompt_suffix=": ")
+
+
+def _ask_secret(prompt: str) -> str:
+    return typer.prompt(
+        prompt.rstrip(": "), default="", show_default=False, hide_input=True, prompt_suffix=": "
     )
-    console.print(table)
-    choice = typer.prompt("Provider (name or number)", default=defaults.get("provider") or "openai")
-    if choice.isdigit() and 1 <= int(choice) <= len(names) + 1:
-        choice = [*names, "custom"][int(choice) - 1]
-    choice = choice.strip().lower()
-    answers: dict[str, Any] = {"provider": choice}
+
+
+def _key_status(name: str, api_key_env: str | None) -> str:
+    if not api_key_env:
+        return "local, no API key needed"
+    if lookup_api_key(name, api_key_env).found:
+        return "key found"
+    return ""
+
+
+def _store_key(provider: str, api_key_env: str, value: str, console: Console) -> None:
+    GLOBAL_REDACTOR.add(value)
+    if keyring_available():
+        try:
+            store_in_keyring(provider, value)
+        except ConfigError:
+            pass
+        else:
+            console.print(Text("Saved the key in your OS keyring.", style="green"))
+            return
+    store_in_env_file(api_key_env, value)
+    console.print(
+        Text(f"Saved the key to {paths.env_file()} (readable only by you).", style="green")
+    )
+
+
+def _list_models(name: str, entry: dict[str, Any]) -> list[ModelInfo]:
+    config = ProviderConfig(**entry)
+    with create_provider(name, config, redactor=GLOBAL_REDACTOR) as client:
+        return call_interruptibly(client.list_models, client.cancel)
+
+
+def run_setup_wizard(
+    console: Console | None = None,
+    *,
+    ask: Ask | None = None,
+    ask_secret: Ask | None = None,
+    welcome: bool = True,
+) -> str:
+    """Interactive setup: provider, API key, and model. Returns the provider name."""
+    console = console or stdout_console()
+    ask = ask or _ask
+    ask_secret = ask_secret or _ask_secret
+    existing = read_config_file()
+    providers = dict(existing.get("providers", {}))
+    if welcome:
+        console.print(
+            Panel(
+                Text(
+                    "Welcome to APEX CORE! Let's connect a model.\n"
+                    "Cloud providers need an API key, which stays on this computer. "
+                    "Ollama and LM Studio run models locally for free.",
+                ),
+                title="Setup",
+                title_align="left",
+                border_style="cyan",
+            )
+        )
+
+    # 1. Provider.
+    options: list[tuple[str, str]] = []
+    for name, preset in PRESETS.items():
+        status = _key_status(name, preset.api_key_env)
+        options.append((name, preset.label + (f"  [{status}]" if status else "")))
+    for name in providers:
+        if name not in PRESETS:
+            options.append((name, "configured custom provider"))
+    options.append(("custom", "Any other OpenAI-compatible or Anthropic endpoint"))
+    found = next((n for n, d in options if d.endswith("[key found]")), None)
+    default = existing.get("default_provider") or found or "openai"
+    while True:
+        choice = pick(console, ask, options, title="Choose a provider", default=default) or ""
+        choice = choice.strip().lower()
+        if choice in PRESETS or choice in providers or choice == "custom":
+            break
+        console.print(Text(f"Unknown provider {choice!r}.", style="yellow"))
+
     preset = get_preset(choice)
-    if preset is None:
-        answers["name"] = typer.prompt(
-            "Name for this provider", default="custom" if choice == "custom" else choice
-        )
-        answers["base_url"] = typer.prompt("Base URL (e.g. http://localhost:8000/v1)")
-        answers["adapter"] = typer.prompt(
-            f"Adapter ({' / '.join(ADAPTERS)})", default=OPENAI_COMPATIBLE
-        )
-        answers["api_key_env"] = typer.prompt(
-            "Environment variable holding the API key (leave empty for none)",
-            default="",
-            show_default=False,
+    name = choice
+    if choice in providers:
+        entry: dict[str, Any] = dict(providers[choice])
+    elif preset is not None:
+        entry = {"base_url": preset.base_url}
+        if preset.adapter != OPENAI_COMPATIBLE:
+            entry["adapter"] = preset.adapter
+        if preset.api_key_env:
+            entry["api_key_env"] = preset.api_key_env
+    else:
+        name = ask("Name for this provider (e.g. myserver): ").strip().lower() or "custom"
+        while not PROVIDER_NAME_RE.match(name):
+            name = ask("Use lowercase letters, digits, - or _: ").strip().lower()
+        entry = {"base_url": ask("Base URL (e.g. http://localhost:8000/v1): ").strip()}
+        adapter = ask(f"API format ({' / '.join(ADAPTERS)}, Enter for openai-compatible): ")
+        if adapter.strip():
+            entry["adapter"] = adapter.strip()
+        key_env = ask("Environment variable for its API key (Enter for none): ").strip()
+        if key_env:
+            entry["api_key_env"] = key_env
+        ProviderConfig(**entry)  # validate early (raises a clear error)
+
+    # 2. API key.
+    api_key_env = entry.get("api_key_env")
+    if api_key_env:
+        lookup = lookup_api_key(name, api_key_env)
+        if lookup.found:
+            console.print(
+                Text(f"Using the key from {describe_source(lookup, api_key_env)}.", style="green")
+            )
+        else:
+            if preset and preset.key_url:
+                console.print(Text(f"Get a key at {preset.key_url}", style="dim"))
+            secret = ask_secret(f"Paste your {name} API key (hidden; Enter to skip): ").strip()
+            if secret:
+                _store_key(name, api_key_env, secret, console)
+            else:
+                console.print(Text(f"Skipped. Set {api_key_env} before chatting:", style="yellow"))
+                for line in key_instructions(api_key_env, name):
+                    console.print(Text("  " + line))
+
+    # 3. Check the connection and choose a model.
+    models: list[ModelInfo] = []
+    can_connect = not api_key_env or lookup_api_key(name, api_key_env).found
+    if can_connect:
+        console.print(Text("Checking the connection...", style="dim"))
+        for attempt in range(3):
+            try:
+                models = _list_models(name, entry)
+                console.print(Text(f"Connected: {len(models)} models available.", style="green"))
+                break
+            except AuthenticationError as exc:
+                console.print(Text(f"That key was rejected: {exc.message}", style="red"))
+                if not api_key_env or attempt == 2:
+                    break
+                secret = ask_secret("Paste the API key again (Enter to skip): ").strip()
+                if not secret:
+                    break
+                _store_key(name, api_key_env, secret, console)
+            except ApexError as exc:
+                console.print(Text(f"Could not list models: {exc.message}", style="yellow"))
+                if exc.hint:
+                    console.print(Text(exc.hint, style="dim"))
+                break
+    suggested = entry.get("model") or (preset.suggested_model if preset else None)
+    if models:
+        options = [(m.id, m.description or "") for m in chat_models(models, suggested)]
+        model = pick(
+            console,
+            ask,
+            options,
+            title=f"Choose a model ({name})",
+            default=suggested if any(m.id == suggested for m in models) else options[0][0],
+            custom_label="type a model id",
         )
     else:
-        if preset.key_url:
-            console.print(Text(f"Get a key at {preset.key_url}", style="dim"))
-        if preset.notes:
-            console.print(Text(preset.notes, style="dim"))
-    suggestion = preset.suggested_model if preset else None
-    model = typer.prompt(
-        "Model id (empty = decide later; `apex models` lists them)",
-        default=suggestion or "",
-        show_default=bool(suggestion),
-    )
-    answers["model"] = model.strip() or None
-    return answers
+        if name == "ollama" and can_connect:
+            console.print(Text("Tip: download a model first, e.g. `ollama pull llama3.2`.",
+                               style="dim"))  # fmt: skip
+        hint = f" (Enter for {suggested})" if suggested else ""
+        model = ask(f"Model id{hint}: ").strip() or suggested
+    if model:
+        entry["model"] = model
+
+    # 4. Save.
+    providers[name] = entry
+    data = dict(existing)
+    data["providers"] = providers
+    data["default_provider"] = name
+    write_config_file(data)
+    HistoryStore().initialize()
+    if model:
+        console.print(Text(f"All set: {name} / {model} is your default.", style="bold green"))
+    else:
+        console.print(
+            Text(
+                f"Saved {name}, but no model is chosen yet: run `apex model` when you know which.",
+                style="yellow",
+            )
+        )
+    return name
 
 
 @guard
@@ -121,21 +277,15 @@ def init(
     adapter: Annotated[str | None, typer.Option(help=f"One of: {', '.join(ADAPTERS)}")] = None,
     force: Annotated[bool, typer.Option(help="Replace an existing provider entry")] = False,
 ) -> None:
-    """Set up APEX CORE: choose a provider and model, create config and history."""
+    """Set up a provider from flags (e.g. --provider ollama --model llama3.2); no flags = setup."""
     console = stdout_console()
     existing = read_config_file()
     if provider is None:
         if not stdin_is_interactive():
             console.print("Non-interactive: pass --provider (and usually --model).")
             raise typer.Exit(EXIT_USAGE)
-        answers = _choose_interactively({"provider": existing.get("default_provider")})
-        provider = answers["provider"]
-        name = name or answers.get("name")
-        base_url = base_url or answers.get("base_url")
-        adapter = adapter or answers.get("adapter")
-        model = model or answers.get("model")
-        if api_key_env is None and "api_key_env" in answers:
-            api_key_env = answers["api_key_env"]
+        run_setup_wizard(console)
+        return
 
     provider = provider.strip().lower()
     preset = get_preset(provider)
@@ -213,7 +363,32 @@ def init(
                 style="yellow",
             )
         )
-    console.print(Text("Next: `apex doctor` to check the setup, then `apex chat`.", style="bold"))
+    console.print(
+        Text("Next: run `apex` to start chatting (`apex doctor` checks the setup).", style="bold")
+    )
+
+
+@guard
+def setup() -> None:
+    """Interactive setup: choose a provider, paste your API key, pick a model."""
+    if not stdin_is_interactive():
+        stdout_console().print(
+            "Setup needs an interactive terminal (or use `apex init --provider`)."
+        )
+        raise typer.Exit(EXIT_USAGE)
+    run_setup_wizard()
+
+
+@guard
+def model() -> None:
+    """Choose the provider and model to use (interactive)."""
+    if not stdin_is_interactive():
+        stdout_console().print(
+            "This needs an interactive terminal; otherwise use "
+            "`apex config set providers.<name>.model <id>`."
+        )
+        raise typer.Exit(EXIT_USAGE)
+    run_setup_wizard(welcome=False)
 
 
 def _check_writable(directory: Path) -> tuple[str, str]:
@@ -318,7 +493,7 @@ def doctor(
             "keyring",
             "available"
             if keyring_available()
-            else f"not available (optional: pipx inject {DIST_NAME} keyring)",
+            else f"not available (optional: {KEYRING_INSTALL_HINT})",
         )
     )
     console = stdout_console()
