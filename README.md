@@ -499,29 +499,31 @@ running a project's tests runs that project's code. For untrusted repositories, 
 
 ## Platform status
 
-CI runs the full test suite on every push (see
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
+CI runs on every push (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)):
 
 | Platform | Python | How it is verified |
 |---|---|---|
-| Linux x86_64 (Ubuntu runner) | 3.11, 3.12, 3.13, 3.14 | CI tests, lowest-dependency tests, package build, and clean-install smoke test |
-| macOS arm64 / Apple Silicon (`macos-latest`) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test |
-| macOS x86_64 / Intel (`macos-15-intel`) | 3.13 | CI tests |
-| Windows x86_64 (`windows-latest`) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test (PowerShell) |
-| Arch Linux / CachyOS | 3.11+ | Expected to work like any Linux (pure Python, no distro-specific code); not run in CI. |
+| Linux x86_64 (Ubuntu runner) | 3.11, 3.12, 3.13, 3.14 | Tests, lowest-dependency tests, package build, clean-install smoke test, and `install.sh` |
+| Arch Linux (container) | 3.14 from pacman | Tests run as a normal user, and `install.sh` run from fish, including the PATH update for new fish sessions |
+| macOS arm64 / Apple Silicon (`macos-latest`) | 3.11, 3.12, 3.13, 3.14 | Tests, package build, clean-install smoke test, and `install.sh` |
+| macOS x86_64 / Intel (`macos-15-intel`) | 3.13 | Tests |
+| Windows x86_64 (`windows-latest`) | 3.11, 3.12, 3.13, 3.14 | Tests, package build, clean-install smoke test, and `install.ps1` in Windows PowerShell 5.1 and PowerShell 7, as a file and through `Invoke-Expression` (the `irm ... \| iex` way) |
+| CachyOS | (pacman's Python) | Not run in CI. CachyOS is based on Arch, which the Arch job covers. |
 
-Last full verification, 2026-10-24, of version 0.1.0rc1 (commit `d2f6a72`): all 18 CI
-jobs passed on macOS 26.6 (arm64), macOS 15.7 (Intel), Windows Server 2025 (build
-26100, default cp1252 encoding), and Ubuntu (Linux 7.0, glibc 2.43). That covers 282 to
-286 tests per job; the skipped tests apply only to the other operating systems. On every
+Last full verification, 2026-10-24, of version 0.2.0rc1 (commit `3bf2b80`): all 22 CI
+jobs passed. Tests: 371 passed on Ubuntu 26.04 (Linux 7.0, glibc 2.43), Arch Linux
+(Python 3.14.8, fish 4.9.3), macOS 26.6 (arm64), and macOS 15.7 (Intel); 375 passed on
+Windows Server 2025 (build 26100, default cp1252 encoding). The skipped tests (7 on
+Linux and macOS, 3 on Windows) apply only to the other operating systems. On every
 platform this included a real Ctrl+C (Ctrl+Break on Windows) interrupting a hung
-request, process-tree kills, symlink-escape checks, and the git fsmonitor protection.
+request, process-tree kills, symlink-escape checks, the git fsmonitor protection, and
+the chat driven through prompt_toolkit with scripted keystrokes.
 
 Results for the current commit are on the repository's
 [Actions page](https://github.com/oliverhyar12-coder/Apex-Core/actions). Not covered by
 CI: Windows on ARM, Linux on ARM, Windows 10 specifically (runners use Windows Server),
-and interactive use in each terminal emulator. Provider adapters are tested against
-mocked and local fake servers, not against the live services.
+CachyOS itself, and interactive use in each terminal emulator. Provider adapters are
+tested against mocked and local fake servers, not against the live services.
 
 ## Limitations
 
