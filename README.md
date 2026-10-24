@@ -404,11 +404,18 @@ CI runs the full test suite on every push (see
 
 | Platform | Python | How it is verified |
 |---|---|---|
-| Linux x86_64 (Ubuntu runner) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test |
+| Linux x86_64 (Ubuntu runner) | 3.11, 3.12, 3.13, 3.14 | CI tests, lowest-dependency tests, package build, and clean-install smoke test |
 | macOS arm64 / Apple Silicon (`macos-latest`) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test |
 | macOS x86_64 / Intel (`macos-15-intel`) | 3.13 | CI tests |
 | Windows x86_64 (`windows-latest`) | 3.11, 3.12, 3.13, 3.14 | CI tests, package build, and clean-install smoke test (PowerShell) |
 | Arch Linux / CachyOS | 3.11+ | Expected to work like any Linux (pure Python, no distro-specific code); not run in CI. |
+
+Last full verification, 2026-10-24: all 18 CI jobs passed on macOS 26.6 (arm64),
+macOS 15.7 (Intel), Windows Server 2025 (build 26100, default cp1252 encoding), and
+Ubuntu (Linux 7.0, glibc 2.43). That covers 282 to 286 tests per job; the skipped tests
+apply only to the other operating systems. On every platform this included a real
+Ctrl+C (Ctrl+Break on Windows) interrupting a hung request, process-tree kills,
+symlink-escape checks, and the git fsmonitor protection.
 
 Results for the current commit are on the repository's
 [Actions page](https://github.com/oliverhyar12-coder/Apex-Core/actions). Not covered by
