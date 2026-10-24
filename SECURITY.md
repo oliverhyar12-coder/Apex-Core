@@ -103,6 +103,14 @@ acting. The model never sees the command or its output, and the model cannot tri
 it. Commands starting with `sudo`, `su`, `doas`, or `runas` are refused because their
 password prompt cannot be shown; this is a convenience, not a security boundary.
 
+### `@file` attachments
+
+`@path` in a chat message attaches that file to the message, so its contents go to your
+provider. It uses the same checks as `read_file`: the path must resolve inside the
+workspace (symlinks included), `.git` and credentials files are refused, binary files are
+refused, the text is redacted, and at most 100 KB is attached. Completion of `@` names
+hides `.git`, ignored folders, and credentials files.
+
 ### Memory, project instructions, and persona
 
 - **Memory** (`MEMORY.md`, `USER.md` in the data directory) is written by the model

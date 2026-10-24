@@ -13,19 +13,34 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from rich.console import Console
+from prompt_toolkit.utils import get_cwidth
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
 from apexcore import __version__
 from apexcore.agent.prompts import available_personalities, personality_text
+from apexcore.cli.branding import (
+    ACCENT,
+    BLUE,
+    MUTED,
+    SKY,
+    TIGER_WIDTH,
+    big_title,
+    random_placeholder,
+    random_tip,
+    tiger_logo,
+)
+from apexcore.cli.mentions import attach_files
 from apexcore.cli.pickers import chat_models, pick
 from apexcore.cli.prompt_input import InputReader, PlainInput, make_reader
 from apexcore.cli.session import AgentSession
 from apexcore.cli.shell import run_user_shell
 from apexcore.cli.ui import (
+    FEED,
     ConsoleUI,
+    format_duration,
     format_tokens,
     print_error,
     sanitize,
@@ -35,8 +50,10 @@ from apexcore.memory import LIMITS, TARGETS
 from apexcore.permissions import Decision
 from apexcore.platform_utils import call_interruptibly
 from apexcore.providers.presets import get_preset
+from apexcore.redaction import GLOBAL_REDACTOR
 from apexcore.tools.base import Risk
 from apexcore.tools.todo import render_todos
+from apexcore.tools.workspace import Workspace
 from apexcore.usage import estimate_cost, format_usage
 
 EXIT_WINDOW = 2.0  # seconds: a second Ctrl+C within this window exits
@@ -118,12 +135,17 @@ class ChatSession:
         self.ui = ConsoleUI(console, markdown=settings.ui.markdown, emoji=settings.ui.emoji)
         if reader is None and input_fn is not None:
             reader = PlainInput(input_fn)
+        self.last_turn: float | None = None
+        self._files: Workspace | None = session.workspace
         if reader is None:
             reader = make_reader(
                 command_table(),
-                toolbar=self.status_line,
+                toolbar=self.status_fragments,
                 save_history=settings.history.save_input,
                 console_input=lambda prompt: console.input(prompt),
+                workspace=self.files_workspace(),
+                placeholder=random_placeholder,
+                unicode=self.ui.unicode,
             )
         self.reader = reader
         self._handlers: dict[str, Callable[[str], str | None]] = {
@@ -164,76 +186,184 @@ class ChatSession:
             badges.append("AUTO")
         return badges
 
-    def status_line(self) -> str:
+    def files_workspace(self) -> Workspace | None:
+        """The folder @file mentions refer to (the workspace, or the current folder)."""
+        if self._files is None:
+            tools = self.session.settings.tools
+            try:
+                self._files = Workspace(
+                    Path.cwd(),
+                    extra_secret_patterns=tools.extra_secret_patterns,
+                    extra_ignore_dirs=tools.extra_ignore_dirs,
+                )
+            except ApexError:
+                return None
+        return self._files
+
+    def status_fragments(self, width: int) -> list[tuple[str, str]]:
+        """The status bar under the prompt, like Hermes Agent's:
+        model · context use · last answer time · folder ... / commands · @ files · ! shell"""
         s = self.session
-        parts = [f"{s.model} ({s.resolved.name})"]
+        uni = self.ui.unicode
+        dot = " · " if uni else " | "
+        left: list[tuple[str, str]] = [
+            ("class:status.icon", " ◆ " if uni else " * "),
+            ("class:status.model", s.model),
+            ("class:status", f"{dot}ctx ~{format_tokens(s.context_tokens())}{dot}"),
+        ]
+        window = s.resolved.config.context_window
+        cells = 10
+        if window:
+            used = min(s.context_tokens() / window, 1.0)
+            filled = round(used * cells)
+            left += [
+                ("class:status", "["),
+                ("class:status.bar", ("█" if uni else "#") * filled),
+                ("class:status.empty", ("░" if uni else ".") * (cells - filled)),
+                ("class:status", f"] {used:.0%}"),
+            ]
+        else:
+            left += [
+                ("class:status", "["),
+                ("class:status.empty", ("░" if uni else ".") * cells),
+                ("class:status", "] --"),
+            ]
         if s.usage_reported:
-            parts.append(f"{format_tokens(s.usage.total_tokens)} tokens")
+            left.append(("class:status", f"{dot}{format_tokens(s.usage.total_tokens)} tok"))
             cost = estimate_cost(s.usage, s.resolved.config.pricing)
             if cost is not None:
-                parts.append(f"~${cost:.4f}")
-        parts.append(f"~{format_tokens(s.context_tokens())} context")
-        if s.title:
-            parts.append(s.title[:30])
-        parts.extend(self.mode_badges())
-        return " " + " · ".join(parts) + " "
+                left.append(("class:status", f" ~${cost:.4f}"))
+        if self.last_turn is not None:
+            left.append(("class:status", f"{dot}{format_duration(self.last_turn)}"))
+        for badge in self.mode_badges():
+            left.append(("class:status.badge", f"  {badge}"))
+        where = _short_path(s.workspace.root if s.workspace else Path.cwd())
+        if len(where) > 32:
+            where = ("…" if uni else "...") + where[-30:]
+        left.append(("class:status", f"{dot}{where}"))
+        right: list[tuple[str, str]] = []
+        for key, name in (("/", "commands"), ("@", "files"), ("!", "shell")):
+            if right:
+                right.append(("class:status", dot))
+            right += [("class:status.key", key), ("class:status.hint", f" {name}")]
+        right.append(("", " "))
+        used_width = sum(get_cwidth(text) for _, text in left)
+        gap = width - used_width - sum(get_cwidth(text) for _, text in right)
+        if gap < 2:  # narrow terminal: the folder goes first, then the hints
+            left = left[:-1]
+            gap += get_cwidth(f"{dot}{where}")
+        return [*left, ("", " " * gap), *right] if gap >= 2 else left
 
     def banner(self) -> None:
-        s = self.session
-        grid = Table.grid(padding=(0, 2))
-        grid.add_column(style="dim", justify="right")
-        grid.add_column()
-        grid.add_row("model", Text(f"{s.model}  ·  {s.resolved.name}"))
-        if s.workspace:
-            grid.add_row("workspace", Text(_short_path(s.workspace.root)))
-        if s.tools:
-            labels = {Decision.ALLOW: "auto", Decision.ASK: "ask", Decision.DENY: "off"}
-            names = {tool.name for tool in s.tools}
-            parts = ["read files"]
-            if "edit_file" in names:
-                parts.append(f"edit ({labels[s.policy.static_decision(Risk.WRITE)]})")
-            if "run_command" in names:
-                parts.append(f"run ({labels[s.policy.static_decision(Risk.EXECUTE)]})")
-            if "todo" in names:
-                parts.append("plan")
-            if "memory" in names:
-                parts.append("memory")
-            grid.add_row("tools", Text(" · ".join(parts)))
+        console = self.console
+        title = big_title(console)
+        if title is not None:
+            console.print(title)
+        logo = tiger_logo(console)
+        identity = self._identity()
+        info = self._banner_info()
+        if logo is not None and console.width >= TIGER_WIDTH + 56:
+            body = Table.grid(padding=(0, 3))
+            body.add_column(width=TIGER_WIDTH, no_wrap=True)
+            body.add_column(ratio=1)
+            body.add_row(Group(logo, Text(), identity), info)
         else:
-            grid.add_row("tools", Text("off (plain chat)"))
+            body = Table.grid()
+            body.add_row(Group(identity, Text(), info))
+        dot = "·" if self.ui.unicode else "-"
+        console.print(
+            Panel(
+                body,
+                title=Text(f" APEX CORE v{__version__} {dot} bring your own keys ", ACCENT),
+                border_style=BLUE,
+                padding=(0, 1),
+            )
+        )
+        console.print(Text("Welcome to APEX CORE! Type your message or /help for commands."))
+        star = "✦" if self.ui.unicode else "*"
+        console.print(Text(f"{star} Tip: {random_tip()}", style=MUTED))
+
+    def _identity(self) -> Text:
+        s = self.session
+        text = Text(no_wrap=True, overflow="ellipsis")
+        text.append(s.model, f"bold {SKY}")
+        text.append(f" · {s.resolved.name}\n" if self.ui.unicode else f" - {s.resolved.name}\n",
+                    MUTED)  # fmt: skip
+        where = s.workspace.root if s.workspace else Path.cwd()
+        text.append(_short_path(where) + "\n", BLUE)
+        text.append(f"Session: {s.conversation_id or 'new'}", MUTED)
+        return text
+
+    def _banner_info(self) -> Table:
+        s = self.session
+        info = Table.grid(padding=(0, 1))
+        info.add_column(style=BLUE, no_wrap=True)
+        info.add_column()
+
+        def heading(name: str) -> None:
+            info.add_row(Text(name, style=f"bold {ACCENT}"), "")
+
+        heading("Available Tools")
+        if s.tools:
+            labels = {Decision.ALLOW: "auto", Decision.ASK: "asks first", Decision.DENY: "off"}
+            names = [tool.name for tool in s.tools]
+            groups = (
+                ("files", ("list_files", "read_file", "search_files"), None),
+                ("git", ("git_status", "git_diff"), None),
+                ("edit", ("edit_file", "write_file"), Risk.WRITE),
+                ("run", ("run_command",), Risk.EXECUTE),
+                ("plan", ("todo",), None),
+                ("memory", ("memory",), None),
+            )
+            for label, members, risk in groups:
+                present = [name for name in members if name in names]
+                if not present:
+                    continue
+                if risk is not None:
+                    label += f" ({labels[s.policy.static_decision(risk)]})"
+                info.add_row(label + ":", ", ".join(present))
+        else:
+            info.add_row("tools:", "off (plain chat)")
+        info.add_row("", "")
+        heading("Commands")
+        for label, names in (
+            ("chat", "/new /retry /undo /compress /title"),
+            ("model", "/model /personality /auto"),
+            ("info", "/usage /tools /plan /memory"),
+            ("sessions", "/sessions /resume   (apex -c continues)"),
+        ):
+            info.add_row(label + ":", names)
+        info.add_row("", "")
+        heading("Session")
         if s.memory is not None:
             counts = {target: len(s.memory.entries(target)) for target in TARGETS}
-            grid.add_row("memory", Text(f"{counts['memory']} notes · {counts['user']} about you"))
+            info.add_row("memory:", f"{counts['memory']} notes · {counts['user']} about you")
         context = s.project_context
         if context is not None:
             if context.blocked:
-                grid.add_row(
-                    "context",
+                info.add_row(
+                    "context:",
                     Text(f"{context.name} BLOCKED ({', '.join(context.findings)})", style="red"),
                 )
             else:
-                grid.add_row(
-                    "context", Text(context.name + (" (truncated)" if context.truncated else ""))
-                )
+                note = " (truncated)" if context.truncated else ""
+                info.add_row("context:", context.name + note)
         if s.persona is not None:
             note = f" (check it: {', '.join(s.persona.findings)})" if s.persona.findings else ""
-            grid.add_row("persona", Text(s.persona.name + note, style="yellow" if note else ""))
+            info.add_row("persona:", Text(s.persona.name + note, style="yellow" if note else ""))
         if s.personality:
-            grid.add_row("personality", Text(s.personality))
+            info.add_row("personality:", s.personality)
         if s.store is None:
-            grid.add_row("history", Text("off for this session"))
+            info.add_row("history:", "off for this session")
         badges = self.mode_badges()
         if badges:
-            grid.add_row("mode", Text(" · ".join(badges), style="yellow"))
-        self.console.print(
-            Panel(grid, title=f"APEX CORE {__version__}", title_align="left", border_style="cyan")
+            info.add_row("mode:", Text(" · ".join(badges), style="yellow"))
+        info.add_row("", "")
+        info.add_row(
+            "",
+            Text(f"{len(s.tools)} tools · {len(COMMANDS)} commands · /help for commands", MUTED),
         )
-        self.console.print(
-            Text(
-                "Type a message and press Enter · /help for commands and keys · Ctrl+D exits",
-                style="dim",
-            )
-        )
+        return info
 
     # --- Main loop ---------------------------------------------------------------
 
@@ -242,7 +372,7 @@ class ChatSession:
         last_interrupt = 0.0
         while True:
             try:
-                line = self.ask("\n› " if self.ui.unicode else "\n> ")
+                line = self.ask("\n❯ " if self.ui.unicode else "\n> ")
             except EOFError:
                 break
             except KeyboardInterrupt:
@@ -276,6 +406,9 @@ class ChatSession:
 
     def turn(self, text: str) -> None:
         self.console.print()
+        workspace = self.files_workspace() if "@" in text else None
+        if workspace is not None:
+            text = self.attach(text, workspace)
         started = time.monotonic()
         try:
             result = self.session.send(text, self.ui)
@@ -295,8 +428,22 @@ class ChatSession:
         elif result.status == "failed" and result.error is not None:
             print_error(result.error, self.console)
             return
+        self.last_turn = time.monotonic() - started
         cost = estimate_cost(result.usage, self.session.resolved.config.pricing)
-        self.ui.turn_summary(result, time.monotonic() - started, cost)
+        self.ui.turn_summary(result, self.last_turn, cost)
+
+    def attach(self, text: str, workspace: Workspace) -> str:
+        """Append the files mentioned with @path, and say what was attached."""
+        text, attached, problems = attach_files(text, workspace, GLOBAL_REDACTOR)
+        feed = FEED if self.ui.unicode else "|"
+        clip = "📎 " if self.ui.unicode and self.ui.emoji else ""
+        for item in attached:
+            size = f"{item.size} bytes" if item.size < 1024 else f"{item.size / 1024:.1f} KB"
+            size += ", truncated" if item.truncated else ""
+            self.console.print(Text(f"{feed} {clip}attached {item.path} ({size})", style="dim"))
+        for problem in problems:
+            self.console.print(Text(sanitize(problem), style="yellow"))
+        return text
 
     def shell(self, command: str) -> None:
         s = self.session

@@ -89,18 +89,13 @@ apex                           # choose "ollama"
 
 ## 3. Chatting
 
-```text
-╭─ APEX CORE 0.2.0rc1 ─────────────────────────────────────────────────────────╮
-│     model  deepseek-chat  ·  deepseek                                        │
-│ workspace  ~/my-project                                                      │
-│     tools  read files · edit (ask) · run (ask) · plan · memory               │
-│    memory  2 notes · 1 about you                                             │
-│   context  AGENTS.md                                                         │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Type a message and press Enter · /help for commands and keys · Ctrl+D exits
+![The APEX CORE chat](images/apex-chat.png)
 
-› what does this project do?
-```
+At the top: the APEX CORE title and the tiger, the tools (and whether they ask first),
+the slash commands, and your session (memory notes, the project's `AGENTS.md`). Below
+the prompt, the status bar shows the model, context use, the time of the last answer,
+and the folder; on the right, the three things you can type: `/` commands, `@` files,
+`!` shell.
 
 Just type and press **Enter**. Keys:
 
@@ -110,12 +105,15 @@ Just type and press **Enter**. Keys:
 | Alt+Enter, Ctrl+J, or a trailing `\` | New line (multi-line messages); pasting multi-line text also works |
 | Up / Down | Your previous messages |
 | `/` then Tab | Complete a slash command |
+| `@` then a file name | Attach that file to your message (Tab completes; e.g. `explain @src/app.py`) |
 | `!command` | Run a shell command yourself (e.g. `!git status`); the output is shown to you, not sent to the model |
 | Ctrl+C | While the agent works: stop it. While typing: clear the line. Twice on an empty line: exit |
 | Ctrl+D | Exit |
 
-The bar at the bottom shows the model, tokens used, estimated context size, and
-modes such as `AUTO` or `READ-ONLY`.
+The status bar shows the model, the estimated context size, tokens used, how long the
+last answer took, the folder, and modes such as `AUTO` or `READ-ONLY`. To see how full
+the context is, tell APEX CORE the model's context size, e.g.
+`apex config set providers.deepseek.context_window 64000`; the bar then fills up.
 
 While the agent works you see a spinner, then a line per tool it uses:
 
@@ -269,6 +267,7 @@ Things to try in a chat:
 - `add input validation to the signup form and update the tests`
 - `write a script that renames all .jpeg files in photos/ to .jpg`
 - `review my uncommitted changes for bugs`
+- `write tests for @src/app.py` (the file is attached to your message)
 - `remember that this project deploys with "make deploy"`
 - `/model` → pick a cheaper model → `/retry`
 

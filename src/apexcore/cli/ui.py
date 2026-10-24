@@ -21,6 +21,7 @@ from rich.syntax import Syntax
 from rich.text import Text
 
 from apexcore.agent.loop import ActionRecord, TurnResult
+from apexcore.cli.branding import MARKDOWN_THEME
 from apexcore.errors import ApexError
 from apexcore.permissions import ApprovalRequest, ApprovalResponse
 from apexcore.providers.base import Message, ToolCall
@@ -182,6 +183,7 @@ class MarkdownStream:
             color_system=self.console.color_system,  # type: ignore[arg-type]
             force_terminal=True,
             highlight=False,
+            theme=MARKDOWN_THEME,
         )
         with capture.capture() as captured:
             capture.print(self._markdown(text))
@@ -252,6 +254,8 @@ class ConsoleUI:
         self.text_console = text_console or console
         self.markdown = markdown and self.text_console.is_terminal
         self.unicode = supports_unicode(console)
+        if self.markdown:
+            self.text_console.push_theme(MARKDOWN_THEME)
         self.emoji = emoji and self.unicode
         self._status = None
         self._mid_line = False

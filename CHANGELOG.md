@@ -13,6 +13,15 @@ Agent, plus installers that do not need pipx. Not published to PyPI.
 
 ### Added
 
+- A Hermes-style start screen: a blue block-letter APEX CORE title, a tiger logo, and a
+  panel listing the tools, slash commands, and session; a welcome line and a tip. Plain
+  text in terminals without colour or Unicode.
+- A rule and `❯` prompt with example placeholders, and a status bar under it: model,
+  context use (with a fill bar when `providers.<name>.context_window` is set), tokens,
+  last answer time, folder, and `/ commands · @ files · ! shell`.
+- `@path` attaches a workspace file to a message, with Tab completion; same rules as the
+  read tool (workspace only, no `.git` or credentials files, text only, redacted).
+- Markdown answers and the completion menu use the same blue theme.
 - Running `apex` with no command opens the chat; the first run starts a setup wizard
   (choose a provider, paste the API key with hidden input, check it by listing models,
   pick a model). New `apex setup` and `apex model` commands.

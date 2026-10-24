@@ -8,8 +8,9 @@ only after you approve them. You bring your own API key, or use a local model.
 - **Terminal only.** No GUI, web dashboard, background service, or telemetry.
 - **Bring your own provider.** OpenAI, Anthropic, DeepSeek, Google Gemini, Mistral,
   OpenRouter, Groq, Ollama, LM Studio, or any OpenAI-compatible endpoint.
-- **A proper chat.** Streaming Markdown answers, a live feed of what the agent is doing,
-  slash commands with Tab completion, multi-line input, saved conversations you can
+- **A proper chat.** A Hermes-style start screen with a blue tiger, streaming Markdown
+  answers, a live feed of what the agent is doing, slash commands with Tab completion,
+  `@file` attachments, multi-line input, a status bar, saved conversations you can
   resume, and long-term memory. The design is inspired by Nous Research's
   [Hermes Agent](https://github.com/NousResearch/hermes-agent) (this project is not
   affiliated with it).
@@ -129,19 +130,12 @@ The first run walks you through setup: choose a provider, paste your API key (hi
 stored only on this computer, never in the config file), and APEX CORE checks the key
 and lists the models it can use so you can pick one. Then the chat opens:
 
-```text
-╭─ APEX CORE 0.2.0rc1 ─────────────────────────────────────────────────────────╮
-│     model  deepseek-chat  ·  deepseek                                        │
-│ workspace  ~/my-project                                                      │
-│     tools  read files · edit (ask) · run (ask) · plan · memory               │
-│    memory  0 notes · 0 about you                                             │
-╰──────────────────────────────────────────────────────────────────────────────╯
-Type a message and press Enter · /help for commands and keys · Ctrl+D exits
+![The APEX CORE chat: a blue block-letter title, the tiger logo, the tools and commands
+panel, a question with an attached file, and the status bar](docs/images/apex-chat.png)
 
-› why does tests/test_api.py fail?
-┊ 📖 read tests/test_api.py  ✓ 0.0s
-┊ 🔍 search 'def login' in .  ✓ 0.0s
-```
+Like Hermes Agent, the start screen shows the tools, the commands, and your session; the
+status bar under the prompt shows the model, how full the context is, the time of the
+last answer, and the folder. Type `@` and a file name to attach a file to your message.
 
 When it wants to run the tests, it asks first (see [Approvals](#approvals)), then shows
 the end of the output:
@@ -245,6 +239,7 @@ for the rest.
 |---|---|
 | Enter | Send. |
 | Alt+Enter, Ctrl+J, or a line ending in `\` | New line. Pasted text keeps its lines. |
+| `@path` | Attach a file from the workspace to your message (Tab completes the name). |
 | Up / Down | Earlier messages. |
 | `/` then Tab | Complete a slash command. |
 | `!command` | Run a shell command yourself; the output is shown to you, not the model. |
@@ -256,9 +251,10 @@ Slash commands: `/help`, `/new` (also `/reset`, `/clear`), `/model [name|provide
 `/personality [name|none]`, `/auto`, `/title NAME`, `/sessions`, `/resume ID-OR-TITLE`,
 and `/exit` (also `/quit`). The [usage guide](docs/USAGE.md) explains each one.
 
-The bottom bar shows the model, tokens used, estimated cost (if prices are configured),
-the approximate context size, and modes such as `AUTO` or `READ-ONLY`. Each answer ends
-with a one-line summary of tools used, tokens, and time.
+The status bar under the prompt shows the model, the approximate context size (with a
+fill bar if you set `context_window` for the provider), tokens and estimated cost, the
+time of the last answer, the folder, and modes such as `AUTO` or `READ-ONLY`. Each answer
+ends with a one-line summary of tools used, tokens, and time.
 
 ### Approvals
 
@@ -358,6 +354,7 @@ timeout = 60            # seconds
 max_retries = 2         # retries for rate limits, 5xx errors, and network errors
 stream = true           # set false for servers with broken streaming
 supports_tools = true   # set false for models without tool calling
+# context_window = 128000  # the model's context size, for the chat's context bar
 # temperature = 0.2
 # max_output_tokens = 4096
 
@@ -430,6 +427,8 @@ The short version (details and limits in [SECURITY.md](SECURITY.md)):
   output cap, a working directory inside the workspace, and credential-like environment
   variables (`*_API_KEY`, `*TOKEN*`, `*SECRET*`...) removed. `!command` in the chat is
   the exception: it runs what *you* type in your shell, and refuses `sudo`.
+- **`@file` attachments** follow the same rules as the read tool: inside the workspace
+  only, never `.git` or credentials files, text only, redacted, and at most 100 KB.
 - **Not as root.** If apex runs as root or an elevated Administrator, command execution
   is disabled.
 - **Secrets.** Keys stay out of config files, logs, history, memory, and error messages;

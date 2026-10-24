@@ -141,7 +141,7 @@ def test_sanitize_strips_control_sequences() -> None:
 def test_prompt_toolkit_keys(keys: str, expected: str) -> None:
     with create_pipe_input() as pipe:
         reader = PromptToolkitInput(
-            command_table(), toolbar=lambda: "status", save_history=False,
+            command_table(), toolbar=lambda width: "status", save_history=False,
             pt_input=pipe, pt_output=DummyOutput(),
         )  # fmt: skip
         pipe.send_text(keys)

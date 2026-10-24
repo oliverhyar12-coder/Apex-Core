@@ -60,6 +60,8 @@ class ProviderConfig(_Strict):
     temperature: float | None = Field(default=None, ge=0, le=2)
     stream: bool = True
     supports_tools: bool = True
+    # The model's context window in tokens, for the chat's context bar (optional).
+    context_window: int | None = Field(default=None, ge=1000)
     pricing: Pricing = Field(default_factory=Pricing)
 
     @field_validator("adapter")
