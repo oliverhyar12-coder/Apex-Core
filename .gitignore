@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Secrets: never commit real keys (.env.example holds placeholders only)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local APEX CORE data, if APEX_CONFIG_DIR / APEX_DATA_DIR point inside the repo
+*.sqlite3
+*.sqlite3-journal
+
+# Editors and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local development directories (see CONTRIBUTING.md)
+.dev/

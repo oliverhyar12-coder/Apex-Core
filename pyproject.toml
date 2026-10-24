@@ -1,0 +1,105 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+# NOTE: the name "apex-core" on PyPI belongs to an unrelated project, so this
+# distribution uses "apex-core-cli". Nothing has been published yet.
+name = "apex-core-cli"
+dynamic = ["version"]
+description = "APEX CORE: a cross-platform, terminal-only AI agent. Bring your own API keys."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Apex Team" }]
+keywords = ["ai", "agent", "cli", "terminal", "llm", "openai", "anthropic", "ollama"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "typer>=0.16",
+    "rich>=13.7",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "httpx>=0.27",
+    "platformdirs>=4.2",
+    "tomli-w>=1.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+# Store API keys in the operating-system credential store
+# (macOS Keychain, Windows Credential Locker, Secret Service on Linux).
+keyring = ["keyring>=24"]
+dev = [
+    "pytest>=8",
+    "ruff==0.17.2",
+    "build>=1.2",
+]
+
+[project.scripts]
+apex = "apexcore.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/oliverhyar12-coder/Apex-Core"
+Issues = "https://github.com/oliverhyar12-coder/Apex-Core/issues"
+Changelog = "https://github.com/oliverhyar12-coder/Apex-Core/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/apexcore/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/apexcore"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/apexcore",
+    "tests",
+    "scripts",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    ".env.example",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "posix_only: test relies on POSIX-only behaviour",
+    "windows_only: test relies on Windows-only behaviour",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+# PLW1514 (open() without encoding) is a preview rule; enable just that one,
+# because implicit locale encodings are a classic source of Windows bugs.
+preview = true
+explicit-preview-rules = true
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PLW1514"]
+ignore = [
+    "RUF001", # ambiguous unicode in strings: we print a few deliberate symbols
+]
+
+[tool.ruff.format]
+preview = false
