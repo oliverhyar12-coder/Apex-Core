@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apex Core — an open-source AI agent for your terminal · Orivexs Team</title>
+<meta name="description" content="Apex Core is an open-source AI assistant and coding agent that runs entirely in your terminal. Bring your own API key or a local model. Install on Linux, macOS and Windows with pipx.">
+<link rel="canonical" href="https://orivexs.team/apex-core/">
+<meta name="theme-color" content="#0b0d10">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Orivexs Team">
+<meta property="og:title" content="Apex Core — an AI agent that lives in your terminal">
+<meta property="og:description" content="Open source, MIT licensed. Bring your own API key or a local model. Every edit and command asks first.">
+<meta property="og:url" content="https://orivexs.team/apex-core/">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<script>document.documentElement.className = "js";</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+<script src="../assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav class="wrap" aria-label="Main">
+    <a class="brand" href="../" aria-label="Orivexs Team home">
+      <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true"><circle cx="16" cy="17" r="11" stroke="#ff8a3d" stroke-width="2.5"/><path d="M16 2l5 8h-10z" fill="#ff8a3d"/></svg>
+      <span class="brand-name">ORIVEXS</span>
+      <span class="brand-team">TEAM</span>
+    </a>
+    <div class="nav-links">
+      <a href="./" aria-current="page">Apex Core</a>
+      <a href="../about/">About</a>
+      <a href="../">Home</a>
+      <a href="https://github.com/oliverhyar12-coder/Apex-Core">GitHub</a>
+      <a class="btn btn--sm" href="#install">Install</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+
+  <section class="hero texture" aria-labelledby="ac-title">
+    <div class="letterbox letterbox--top" aria-hidden="true"></div>
+    <div class="letterbox letterbox--bottom" aria-hidden="true"></div>
+    <div class="wrap">
+      <p class="overline intro d1">Orivexs Team · Open source · MIT</p>
+      <h1 id="ac-title" class="hero-title hero-title--product intro d2">Apex <span class="accent" style="display: inline">Core</span></h1>
+      <p class="lede intro d3">An open-source AI assistant and coding agent that runs entirely in your terminal. Bring your own API key, or a local model, and type <code style="color: var(--text)">apex</code>.</p>
+      <div class="actions intro d4">
+        <a class="btn" href="#install">Install Apex Core
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>
+        </a>
+        <a class="link-plain" href="https://github.com/oliverhyar12-coder/Apex-Core">Source on GitHub</a>
+      </div>
+      <ul class="chips intro d5">
+        <li class="is-accent">v0.1.0rc1 · release candidate</li>
+        <li>Python 3.11+</li>
+        <li>Linux · macOS · Windows</li>
+        <li>MIT license</li>
+        <li>No telemetry</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="session-title">
+    <div class="wrap" style="gap: 40px">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">01 / A task, start to finish</p>
+          <h2 id="session-title" class="h-xl">It asks before it acts.</h2>
+        </div>
+        <p class="body-muted">Reading inside the workspace is free. Every edit shows a diff, every command shows its exact arguments, and nothing runs until you answer.</p>
+      </div>
+      <div class="session reveal">
+        <div class="term">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i><span>~/projects/my-cli — apex task</span></span></div>
+          <div class="session-screen" data-session>
+            <div class="session-out" aria-label="Example Apex Core task session">
+              <div class="t-line"><span class="c-accent">$ </span>apex task "Add a --verbose flag to cli.py and update the README"</div>
+              <div class="t-line"><span class="c-cyan">  -&gt; </span>read cli.py</div>
+              <div class="t-line" data-kind="ok">     <span class="c-ok">ok</span></div>
+              <div class="t-line"><span class="c-cyan">  -&gt; </span>read README.md</div>
+              <div class="t-line" data-kind="ok">     <span class="c-ok">ok</span></div>
+              <div class="t-line"><span class="c-cyan">  -&gt; </span>edit cli.py (+6 -1)</div>
+              <div class="t-line c-warn">╭─ Approval required ───────────────────────────────╮</div>
+              <div class="t-line c-warn">│ --- a/cli.py</div>
+              <div class="t-line c-warn">│ +++ b/cli.py</div>
+              <div class="t-line"><span class="c-warn">│ </span><span class="c-ok">+    parser.add_argument("--verbose", action="store_true")</span></div>
+              <div class="t-line c-warn">╰───────────────────────────────────────────────────╯</div>
+              <div class="t-line c-dim">[y]es / [N]o / [a]lways this session; or type a reason to deny with feedback.</div>
+              <div class="t-line" data-kind="allow">Allow? y</div>
+              <div class="t-line" data-kind="ok">     <span class="c-ok">ok</span></div>
+              <div class="t-line"><span class="c-cyan">  -&gt; </span>edit README.md (+3 -0)</div>
+              <div class="t-line" data-kind="allow">Allow? y</div>
+              <div class="t-line" data-kind="ok">     <span class="c-ok">ok</span></div>
+              <div class="t-line"><span class="c-cyan">  -&gt; </span>run python -m pytest -q</div>
+              <div class="t-line" data-kind="allow">Allow? y</div>
+              <div class="t-line" data-kind="ok">     <span class="c-ok">ok</span></div>
+              <div class="t-line"> </div>
+              <div class="t-line"><em>Actions</em></div>
+              <div class="t-line c-dim">  #  tool         status  summary</div>
+              <div class="t-line">  1  read_file    ok      read cli.py</div>
+              <div class="t-line">  2  read_file    ok      read README.md</div>
+              <div class="t-line">  3  edit_file    ok      edit cli.py (+6 -1)</div>
+              <div class="t-line">  4  edit_file    ok      edit README.md (+3 -0)</div>
+              <div class="t-line">  5  run_command  ok      run python -m pytest -q</div>
+              <div><span class="caret" aria-hidden="true"></span></div>
+            </div>
+          </div>
+        </div>
+        <aside class="hud" aria-label="Session settings">
+          <p class="hud-label">SESSION</p>
+          <dl class="stat-pair">
+            <div class="stat"><dt>tool calls</dt><dd class="accent" data-count="ok">5</dd></div>
+            <div class="stat"><dt>approvals given</dt><dd data-count="allow">3</dd></div>
+          </dl>
+          <dl class="kv">
+            <div><dt>read</dt><dd class="c-ok">allowed</dd></div>
+            <div><dt>write</dt><dd class="c-warn">ask</dd></div>
+            <div><dt>execute</dt><dd class="c-warn">ask</dd></div>
+            <div><dt>agent.max_steps</dt><dd>12</dd></div>
+            <div><dt>shell</dt><dd>none (argv only)</dd></div>
+            <div><dt>history</dt><dd>local SQLite</dd></div>
+            <div><dt>telemetry</dt><dd>none</dd></div>
+          </dl>
+          <p class="fine">Default permissions from config.toml. The session is an illustration; prompts and labels match apex 0.1.0rc1.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="install" class="section section--deep" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="split">
+        <div class="reveal">
+          <p class="kicker">02 / Install</p>
+          <h2 id="install-title" class="h-xl">Four lines on any OS.</h2>
+          <p style="color: var(--text-3)">There is no installer to download. Apex Core installs from GitHub with <a href="https://pipx.pypa.io">pipx</a>, which gives the <code>apex</code> command its own isolated environment. You need Python 3.11 or newer; <code>git</code> is optional on Linux and macOS.</p>
+          <div class="callout" style="display: block">
+            <strong>Do not run pip install apex-core.</strong> That PyPI name belongs to an unrelated project. This one is <code>apex-core-cli</code> and is not on PyPI yet.
+          </div>
+          <dl class="kv" style="font-size: 15px">
+            <div><dt>Keyring support (optional)</dt><dd>pipx inject apex-core-cli keyring</dd></div>
+            <div><dt>Upgrade</dt><dd>pipx upgrade apex-core-cli</dd></div>
+            <div><dt>Uninstall</dt><dd>pipx uninstall apex-core-cli</dd></div>
+          </dl>
+        </div>
+
+        <div class="split-wide reveal" style="gap: 16px">
+          <div class="tablist" role="tablist" aria-label="Operating system" data-os-tabs>
+            <button class="tab" type="button" role="tab" id="tab-linux" aria-controls="os-linux" aria-selected="true" data-os="linux">Linux</button>
+            <button class="tab" type="button" role="tab" id="tab-macos" aria-controls="os-macos" aria-selected="false" data-os="macos">macOS</button>
+            <button class="tab" type="button" role="tab" id="tab-windows" aria-controls="os-windows" aria-selected="false" data-os="windows">Windows</button>
+          </div>
+
+          <div id="os-linux" role="tabpanel" aria-labelledby="tab-linux">
+            <div class="term">
+              <div class="term-bar"><span>Linux · bash · Arch / CachyOS</span>
+                <button class="copy" type="button" data-copy="cmd-linux" aria-label="Copy Linux install commands"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="1.5"/><path d="M16 8V4.5A1.5 1.5 0 0 0 14.5 3h-10A1.5 1.5 0 0 0 3 4.5v10A1.5 1.5 0 0 0 4.5 16H8"/></svg><span data-copy-label aria-live="polite">Copy</span></button>
+              </div>
+              <div class="code" id="cmd-linux">
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">sudo pacman -S python-pipx</span><span class="note">   # Arch / CachyOS</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">pipx ensurepath</span><span class="note">   # then open a new terminal</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">apex --version</span></div>
+              </div>
+            </div>
+            <p class="os-note">Debian / Ubuntu: <code>sudo apt install pipx</code>. Fedora: <code>sudo dnf install pipx</code>.</p>
+          </div>
+
+          <div id="os-macos" role="tabpanel" aria-labelledby="tab-macos">
+            <div class="term">
+              <div class="term-bar"><span>macOS · zsh · Apple Silicon or Intel</span>
+                <button class="copy" type="button" data-copy="cmd-macos" aria-label="Copy macOS install commands"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="1.5"/><path d="M16 8V4.5A1.5 1.5 0 0 0 14.5 3h-10A1.5 1.5 0 0 0 3 4.5v10A1.5 1.5 0 0 0 4.5 16H8"/></svg><span data-copy-label aria-live="polite">Copy</span></button>
+              </div>
+              <div class="code" id="cmd-macos">
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">python3 -m pip install --user pipx</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">python3 -m pipx ensurepath</span><span class="note">   # then open a new terminal</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"</span></div>
+                <div class="code-line"><span class="prompt">$ </span><span class="cmd">apex --version</span></div>
+              </div>
+            </div>
+            <p class="os-note">With Homebrew you can run <code>brew install pipx</code> instead of the first line.</p>
+          </div>
+
+          <div id="os-windows" role="tabpanel" aria-labelledby="tab-windows">
+            <div class="term">
+              <div class="term-bar"><span>Windows · PowerShell · 10/11</span>
+                <button class="copy" type="button" data-copy="cmd-windows" aria-label="Copy Windows install commands"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="1.5"/><path d="M16 8V4.5A1.5 1.5 0 0 0 14.5 3h-10A1.5 1.5 0 0 0 3 4.5v10A1.5 1.5 0 0 0 4.5 16H8"/></svg><span data-copy-label aria-live="polite">Copy</span></button>
+              </div>
+              <div class="code" id="cmd-windows">
+                <div class="code-line"><span class="prompt">PS&gt; </span><span class="cmd">py -m pip install --user pipx</span></div>
+                <div class="code-line"><span class="prompt">PS&gt; </span><span class="cmd">py -m pipx ensurepath</span><span class="note">   # then open a new terminal</span></div>
+                <div class="code-line"><span class="prompt">PS&gt; </span><span class="cmd">pipx install "git+https://github.com/oliverhyar12-coder/Apex-Core.git"</span></div>
+                <div class="code-line"><span class="prompt">PS&gt; </span><span class="cmd">apex --version</span></div>
+              </div>
+            </div>
+            <p class="os-note">Install Python 3.11+ from <a href="https://www.python.org/downloads/windows/">python.org</a> or the Microsoft Store, and git from <a href="https://git-scm.com/download/win">git-scm.com</a> (needed to install from GitHub). WSL is not required.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="qs-title">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">03 / Quick start</p>
+          <h2 id="qs-title" class="h-xl">Three commands to a chat.</h2>
+        </div>
+      </div>
+      <ol class="grid steps">
+        <li class="card reveal">
+          <span class="step-num" aria-hidden="true">1</span>
+          <code>apex init</code>
+          <p>Pick a provider and model. It tells you which environment variable needs your API key.</p>
+        </li>
+        <li class="card reveal">
+          <span class="step-num" aria-hidden="true">2</span>
+          <code>apex doctor --online</code>
+          <p>Checks Python, paths, config, your key, history, git and the terminal, then tests the connection.</p>
+        </li>
+        <li class="card reveal">
+          <span class="step-num" aria-hidden="true">3</span>
+          <code>apex chat</code>
+          <p>Interactive chat with workspace tools, in the current directory. Or use <code>apex ask</code> and <code>apex task</code>.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="prov-title">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">04 / Providers</p>
+          <h2 id="prov-title" class="h-xl">Your key. Your model.</h2>
+        </div>
+        <p class="body-muted">Nine presets, plus any OpenAI-compatible server with <code style="color: var(--text)">apex providers add</code>. Keys are never written to config.toml.</p>
+      </div>
+      <div class="ruled providers reveal" style="--min: 260px">
+        <div><strong>openai</strong><span>OpenAI-compatible</span><code>OPENAI_API_KEY</code></div>
+        <div><strong>anthropic</strong><span>Native Messages API</span><code>ANTHROPIC_API_KEY</code></div>
+        <div><strong>deepseek</strong><span>OpenAI-compatible</span><code>DEEPSEEK_API_KEY</code></div>
+        <div><strong>gemini</strong><span>Google's OpenAI-compatible endpoint</span><code>GEMINI_API_KEY</code></div>
+        <div><strong>mistral</strong><span>OpenAI-compatible</span><code>MISTRAL_API_KEY</code></div>
+        <div><strong>openrouter</strong><span>OpenAI-compatible</span><code>OPENROUTER_API_KEY</code></div>
+        <div><strong>groq</strong><span>OpenAI-compatible</span><code>GROQ_API_KEY</code></div>
+        <div><strong>ollama</strong><span>Local · localhost:11434</span><code class="is-local">no key</code></div>
+        <div><strong>lmstudio</strong><span>Local · localhost:1234</span><code class="is-local">no key</code></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--deep" aria-labelledby="cmd-title">
+    <div class="wrap" style="gap: 40px">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">05 / Commands</p>
+          <h2 id="cmd-title" class="h-xl">The whole toolkit.</h2>
+        </div>
+      </div>
+      <div class="table-box reveal">
+        <table>
+          <thead><tr><th scope="col">Command</th><th scope="col">What it does</th></tr></thead>
+          <tbody>
+            <tr><td><code>apex init</code></td><td>Choose a provider and model; create the config and history database.</td></tr>
+            <tr><td><code>apex doctor [--online]</code></td><td>Check Python, paths, config, API key, history, git and terminal.</td></tr>
+            <tr><td><code>apex chat</code></td><td>Interactive chat with workspace tools.</td></tr>
+            <tr><td><code>apex ask "question"</code></td><td>One question; the answer goes to stdout, so it works in pipes.</td></tr>
+            <tr><td><code>apex task "description"</code></td><td>Let the agent work on a task, approving each edit and command.</td></tr>
+            <tr><td><code>apex providers</code></td><td>List, add, remove and switch providers.</td></tr>
+            <tr><td><code>apex models</code></td><td>List the models your key can use.</td></tr>
+            <tr><td><code>apex config</code></td><td>View and change settings and stored keys.</td></tr>
+            <tr><td><code>apex tools</code></td><td>List tools and whether each runs automatically or asks first.</td></tr>
+            <tr><td><code>apex history</code></td><td>View and delete local history.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="sec-title">
+    <div class="wrap">
+      <div class="section-head reveal">
+        <div>
+          <p class="kicker">06 / Security model</p>
+          <h2 id="sec-title" class="h-xl">Guard rails, not a sandbox.</h2>
+        </div>
+        <p class="body-muted">An approved command runs with your user's permissions. For untrusted repositories use <code style="color: var(--text)">--read-only</code>, or run apex in a container or VM.</p>
+      </div>
+      <div class="grid" style="--min: 360px">
+        <div class="card reveal"><h3 style="font-size: 28px">Workspace containment</h3><p>Tools only touch paths inside the workspace, after resolving <code>..</code> and symlinks. <code>.git</code> and credentials files are blocked.</p></div>
+        <div class="card reveal"><h3 style="font-size: 28px">Approval</h3><p>Edits show a diff, commands show the exact argv. Destructive or opaque commands are flagged and never auto-approved.</p></div>
+        <div class="card reveal"><h3 style="font-size: 28px">No shell</h3><p>Commands run from an argument list with stdin closed, a timeout, an output cap and credential-like variables removed.</p></div>
+        <div class="card reveal"><h3 style="font-size: 28px">Not as root</h3><p>If apex runs as root or an elevated Administrator, command execution is disabled.</p></div>
+        <div class="card reveal"><h3 style="font-size: 28px">Secrets stay out</h3><p>Keys stay out of config, logs, history and errors. Known token formats are redacted before tool output reaches the model.</p></div>
+        <div class="card reveal"><h3 style="font-size: 28px">No .env surprises</h3><p><code>.env</code> files in your working directory are ignored, so a cloned repository cannot redirect your API traffic.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--deep" aria-labelledby="plat-title">
+    <div class="wrap">
+      <div class="split">
+        <div class="reveal" style="flex: 1 1 340px">
+          <p class="kicker">07 / Platforms</p>
+          <h2 id="plat-title" class="h-xl">Tested where it runs.</h2>
+          <p style="color: var(--muted)">The CI workflow runs the full test suite on every push. Provider adapters are tested against mocked and local fake servers, not live services.</p>
+        </div>
+        <div class="split-wide reveal" style="flex: 2 1 560px">
+          <div class="table-box">
+            <table>
+              <thead><tr><th scope="col">Platform</th><th scope="col">Python</th><th scope="col">Verified by</th></tr></thead>
+              <tbody>
+                <tr><td>Linux x86_64</td><td class="mono">3.11–3.14</td><td>CI tests, package build, clean-install smoke test</td></tr>
+                <tr><td>macOS Apple Silicon</td><td class="mono">3.11–3.14</td><td>CI tests, package build, clean-install smoke test</td></tr>
+                <tr><td>macOS Intel</td><td class="mono">3.13</td><td>CI tests</td></tr>
+                <tr><td>Windows x86_64</td><td class="mono">3.11–3.14</td><td>CI tests, package build, smoke test in PowerShell</td></tr>
+                <tr><td>Arch Linux / CachyOS</td><td class="mono">3.11+</td><td>Pure Python with no distro-specific code; not run in CI</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="cta-title">
+    <div class="wrap" style="gap: 28px; align-items: flex-start">
+      <h2 id="cta-title" class="reveal" style="font-size: clamp(56px, 8vw, 128px); max-width: 14ch">Read the code. Then run it.</h2>
+      <p class="reveal" style="max-width: 640px; color: var(--muted)">Still a release candidate: no image attachments, no web access tool, and single-line chat input for now. Issues and pull requests are welcome.</p>
+      <div class="actions reveal">
+        <a class="btn" href="https://github.com/oliverhyar12-coder/Apex-Core">Open on GitHub</a>
+        <a class="link-plain" href="mailto:oliver@orivexs.team" style="color: var(--accent)">oliver@orivexs.team</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© 2026 Orivexs Team · orivexs.team</span>
+    <span>Apex Core is MIT licensed · © 2026 Apex Team</span>
+  </div>
+</footer>
+</body>
+</html>
