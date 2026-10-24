@@ -7,7 +7,8 @@ Every path a tool touches goes through :meth:`Workspace.resolve`, which
 * refuses the ``.git`` directory (hooks and config there can execute code, and
   remote URLs may embed tokens);
 * refuses files that look like credentials (``.env``, ``*.pem``, ``id_rsa``...);
-* on Windows, refuses alternate data streams and reserved device names.
+* on Windows, refuses drive-relative paths (``C:foo``), alternate data streams,
+  and reserved device names.
 
 Limitation: checks happen immediately before each operation, but a *separate,
 concurrently running* malicious process could still swap a path for a symlink
@@ -20,7 +21,7 @@ from __future__ import annotations
 import fnmatch
 import os
 from collections.abc import Iterable, Iterator
-from pathlib import Path, PurePath
+from pathlib import Path, PureWindowsPath
 
 from apexcore.errors import WorkspaceError
 
@@ -132,7 +133,11 @@ class Workspace:
                 f"Path {raw!r} uses '~'. Use a path relative to the workspace root instead."
             )
         if _is_windows():
-            pure = PurePath(raw)
+            pure = PureWindowsPath(raw)
+            if pure.drive and not pure.root:
+                # "C:foo" means "foo in drive C's current directory", which depends
+                # on hidden process state; refuse it rather than guess.
+                raise WorkspaceError(f"Path {raw!r} is drive-relative; use a relative path.")
             for part in pure.parts[1:] if pure.drive else pure.parts:
                 if ":" in part:
                     raise WorkspaceError(f"Path {raw!r} uses an alternate data stream.")

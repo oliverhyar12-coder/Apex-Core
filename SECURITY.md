@@ -40,8 +40,8 @@ yourself. A provider sees everything you send it.
 - **Workspace containment.** Every path is resolved (including `..`, symlinks, and
   Windows junctions) and must stay inside the workspace root, which is the current
   directory or `--workspace`. Absolute paths outside it, `~`, and NUL bytes are refused.
-  On Windows, alternate data streams (`file:stream`) and device names (`CON`, `NUL`...)
-  are refused.
+  On Windows, drive-relative paths (`C:foo`), alternate data streams (`file:stream`),
+  and device names (`CON`, `NUL`...) are refused.
 - **`.git` is off-limits** to the file tools: hooks there execute code, and `config`
   can contain credentials in remote URLs. The `git_status` and `git_diff` tools cover
   the read-only needs.

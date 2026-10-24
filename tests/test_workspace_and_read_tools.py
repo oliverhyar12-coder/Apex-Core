@@ -79,6 +79,22 @@ def test_windows_special_paths(ws: Workspace, raw: str) -> None:
         ws.resolve(raw)
 
 
+@pytest.mark.parametrize(
+    "raw", ["file.txt:stream", "CON", "nul.txt", "sub\\aux", "C:foo", "LPT1.log", "a/com3"]
+)
+def test_windows_rules_portably(ws: Workspace, raw: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Windows-only path checks, exercised on every OS."""
+    monkeypatch.setattr("apexcore.tools.workspace._is_windows", lambda: True)
+    with pytest.raises(WorkspaceError):
+        ws._check_raw(raw)
+
+
+def test_windows_rules_allow_normal_names(ws: Workspace, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("apexcore.tools.workspace._is_windows", lambda: True)
+    for raw in ("src/console.py", "context.txt", "C:\\Users\\x\\file.txt", "\\\\server\\share\\f"):
+        ws._check_raw(raw)
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows path rules")
 def test_windows_case_insensitive_containment(ws: Workspace) -> None:
     (ws.root / "File.txt").write_text("x", encoding="utf-8")
